@@ -75,4 +75,3 @@ def convert(json_path: str, omgc_path: str) -> None:
     with open(omgc_path, 'wb') as f:
         for i in data:
             f.write(struct.pack('>I', i))  # 作为 4 字节大端整型写入到文件
-    f.close()
