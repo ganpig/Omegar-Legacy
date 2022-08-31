@@ -48,7 +48,7 @@ def save(title: str, default: str, name: str, type: str) -> str:
     return file
 
 
-def input(msg: str, title: str) -> None:
+def input(msg: str, title: str) -> str:
     """
     输入框。
     """
@@ -76,7 +76,7 @@ def input(msg: str, title: str) -> None:
     return text
 
 
-def yesno(msg: str, title: str) -> None:
+def yesno(msg: str, title: str) -> bool:
     """
     确认框。
     """
