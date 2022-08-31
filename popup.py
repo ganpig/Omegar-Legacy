@@ -10,11 +10,12 @@ def open(title: str, name: str, type: str) -> str:
     """
     打开文件。
     """
-    tk = tkinter.Tk()
-    tk.withdraw()
+    # tk = tkinter.Tk()
+    # tk.withdraw()
     file = tkinter.filedialog.askopenfilename(
-        title=title, filetypes=[(name, type)])
-    tk.destroy()
+        title=title, filetypes=[(name, type)]
+        )
+    # tk.destroy()
     return file
 
 
@@ -48,7 +49,7 @@ def save(title: str, default: str, name: str, type: str) -> str:
     return file
 
 
-def input(msg: str, title: str) -> None:
+def input(msg: str, title: str) -> str:
     """
     输入框。
     """
@@ -76,7 +77,7 @@ def input(msg: str, title: str) -> None:
     return text
 
 
-def yesno(msg: str, title: str) -> None:
+def yesno(msg: str, title: str) -> bool:
     """
     确认框。
     """
