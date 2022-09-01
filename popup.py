@@ -10,12 +10,12 @@ def open(title: str, name: str, type: str) -> str:
     """
     打开文件。
     """
-    # tk = tkinter.Tk()
-    # tk.withdraw()
+    tk = tkinter.Tk()
+    tk.withdraw()
     file = tkinter.filedialog.askopenfilename(
         title=title, filetypes=[(name, type)]
         )
-    # tk.destroy()
+    tk.destroy()
     return file
 
 
