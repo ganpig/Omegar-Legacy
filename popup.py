@@ -18,6 +18,17 @@ def open(title: str, name: str, type: str) -> str:
     return file
 
 
+def folder(title: str) -> str:
+    """
+    打开文件夹。
+    """
+    tk = tkinter.Tk()
+    tk.withdraw()
+    folder = tkinter.filedialog.askdirectory(title=title)
+    tk.destroy()
+    return folder
+
+
 def print(msg: str, title: str) -> None:
     """
     提示框。
