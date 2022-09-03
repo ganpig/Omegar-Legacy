@@ -13,7 +13,8 @@ def open(title: str, name: str, type: str) -> str:
     tk = tkinter.Tk()
     tk.withdraw()
     file = tkinter.filedialog.askopenfilename(
-        title=title, filetypes=[(name, type)])
+        title=title, filetypes=[(name, type)]
+        )
     tk.destroy()
     return file
 
