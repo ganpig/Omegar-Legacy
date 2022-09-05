@@ -1,5 +1,7 @@
+import bisect
 import hashlib
 import json
+import math
 import os
 import pickle
 import shutil
@@ -9,13 +11,89 @@ import zipfile
 
 import popup
 
+# 事件列表
+ADD_NOTE = 0x01
+CHANGE_NOTE_POS = 0x02
+CHANGE_NOTE_TRACK = 0x03
+ACTIVATE_NOTE = 0x04
+CHANGE_LINE_POS = 0x10
+
+# 用 2 的整数次幂表示 note 属性以便通过加法运算合并属性
+PROPERTIES = [
+    ('property_1', 1 << 0),
+    ('property_2', 1 << 1),
+    ('property_3', 1 << 2),
+    ('property_4', 1 << 3)
+]
+
 
 def convert_chart(json_path: str, omgc_path: str) -> None:
     """
     将 json 工程文件转换为 omgc 谱面文件。
     参数：两个文件的 path。
     """
-    
+    project_data = json.load(open(json_path))  # 读取 json 数据
+    instructions = []  # 谱面指令列表
+
+    beats = [j for i in project_data['beats'] for j in i]  # 节拍对应的秒数
+
+    def beat2sec(beat: int or float) -> float:
+        """
+        将拍数转换为秒数。
+        """
+        beat -= 1
+        if int(beat) == beat:
+            beat = int(beat)
+        if beat < 0:
+            # 根据开头两拍确定的直线计算
+            return (beats[1]-beats[0])*beat+beats[0]
+        elif beat > len(beats)-1:
+            # 根据结尾两拍确定的直线计算
+            return (beats[-1]-beats[-2])*(beat-len(beats)+1)+beats[-1]
+        elif type(beat) == int:
+            # 直接作为下标获取
+            return beats[beat]
+        else:
+            # 根据前后两拍确定的直线计算
+            last_beat = math.floor(beat)
+            next_beat = math.ceil(beat)
+            return beats[last_beat]*(next_beat-beat)+beats[next_beat]*(beat-last_beat)
+
+    for note in project_data['notes']:
+        start_time = beat2sec(note['start'])  # 判定秒数
+        end_time = beat2sec(note['end'])  # 结束秒数
+        key_points = list((beat2sec(i), j) for i, j
+                          in note['speed_key_points'])  # 转换关键点列表
+        key_points.append((float('inf'), key_points[-1][1]))
+        cur_point_pos = 0  # 当前关键点的 note 位置
+        key_points_abc = []  # 位置函数列表
+
+        for i in range(len(key_points)-1):  # 通过关键点计算二次函数
+            k = (key_points[i+1][1]-key_points[i][1]) / \
+                (key_points[i+1][0]-key_points[i][0])  # 速度函数斜率
+            a = k/2  # 对速度函数做不定积分
+            b = key_points[i][1]-k*key_points[i][0]  # 将当前关键点代入速度函数求解 b
+            def first_two(x): return a*x**2+b*x  # 计算二次函数前两项之和
+            c = cur_point_pos-first_two(key_points[i][0])  # 将当前关键点代入二次函数求解 c
+            key_points_abc.append([key_points[i][0], a, b, c])
+            if key_points[i][0] <= start_time < key_points[i+1][0]:  # 开始时间处于当前区间
+                start_pos = first_two(start_time)+c  # 计算 note 开始时的位置以便后续计算显示长度
+            if key_points[i][0] <= end_time < key_points[i+1][0]:  # 结束时间处于当前区间
+                end_pos = first_two(end_time)+c  # 计算 note 结束时的位置以便后续计算显示长度
+            cur_point_pos = first_two(key_points[i+1][0])+c  # 将下一个关键点代入二次函数
+        for i in range(len(key_points_abc)):
+            key_points_abc[i][-1] -= start_pos  # 使 note 判定时的位置为 0，即与判定线重合
+
+        add_instr = [0]*10  # 初始化长度为 10 的数组
+        add_instr[0] = note['id']  # note 的 ID
+        add_instr[1] = sum(j for i, j in PROPERTIES if note[i])  # note 的属性
+        add_instr[2:5] = key_points_abc.pop(0)[1:]  # 初始位置函数
+        add_instr[5] = note['initial_showing_track']  # 初始显示轨道
+        add_instr[6] = note['judging_track']  # 实际判定轨道
+        add_instr[7] = start_time  # 开始时间
+        add_instr[8] = end_time  # 结束时间
+        add_instr[9] = end_pos-start_pos  # 显示长度
+        instructions.append((-1, ADD_NOTE, *add_instr))  # 添加指令
 
 
 def convert_charts(charts_info: list) -> None:

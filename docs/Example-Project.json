@@ -29,7 +29,18 @@
             ],
             "judging_track": 1,
             "start": 8,
-            "end": 8
+            "end": 10
         }
-    ]
+    ],
+    "line": {
+        "initial_position": 600,
+        "motions": [
+            {
+                "start": 7,
+                "end": 8,
+                "target": 100,
+                "type": 2
+            }
+        ]
+    }
 }
