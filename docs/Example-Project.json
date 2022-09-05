@@ -1,5 +1,35 @@
 {
-    "ProjectName": "",
-    "Beats": [],
-    "Notes": []
+    "project_name": "Her Theme",
+    "music_path": "C:\\Users\\Administrator\\Desktop\\Tony Fox - Her Theme.ogg",
+    "beats": [
+        [1.5, 1.9, 2.3, 2.7],
+        [3.1, 3.5, 3.9, 4.3],
+        [4.7, 5.1, 5.5, 5.9]
+    ],
+    "notes": [
+        {
+            "id": 0,
+            "property_1": true,
+            "property_2": false,
+            "property_3": false,
+            "property_4": true,
+            "speed_key_points": [
+                [0, 300],
+                [7, 300],
+                [8, 50]
+            ],
+            "initial_showing_track": 0,
+            "showing_track_changes": [
+                {
+                    "start": 7,
+                    "end": 8,
+                    "target": 1,
+                    "type": 2
+                }
+            ],
+            "judging_track": 1,
+            "start": 8,
+            "end": 8
+        }
+    ]
 }

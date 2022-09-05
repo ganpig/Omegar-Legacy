@@ -15,7 +15,7 @@ def convert_chart(json_path: str, omgc_path: str) -> None:
     将 json 工程文件转换为 omgc 谱面文件。
     参数：两个文件的 path。
     """
-
+    
 
 
 def convert_charts(charts_info: list) -> None:
