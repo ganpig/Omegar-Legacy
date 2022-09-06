@@ -8,17 +8,31 @@ import player
 import popup
 from window import *
 
+DEFAULT_LINE_INITIAL_POSITION = 800  # 默认判定线初始位置
+
 
 class Sidebar:
     def __init__(self, window: Window) -> None:
         self.window = window
-        self.pages = {'home': '欢迎来到 Omegar', 'edit': '谱面编辑', 'settings': '设置'}
+        self.player = player.Player()
+        self.window.on_exit = self.save_and_return
+        self.pages = {'home': '欢迎来到 Omegar', 'pick_beats': '采拍',
+                      'edit': '谱面编辑', 'settings': '设置'}
         self.icons = {name: pygame.transform.scale(pygame.image.load(
             os.path.join(RESOURCES, 'icons', name+'.png')), size) for name, size in
-            [('settings', (50, 50)), ('return', (50, 50)), ('change', (65, 30)), ('set', (65, 30)), ('help', (20, 20),), ('go', (50, 50))]}
+            [('settings',   (50, 50)),
+             ('return',     (50, 50)),
+             ('change',     (65, 30)),
+             ('set',        (65, 30)),
+             ('help',       (20, 20)),
+             ('go',         (40, 40)),
+             ('add',        (40, 40)),
+             ('play',       (40, 40)),
+             ('pause',      (40, 40))]}
         self.buttons = {}
         self.sliders = {}
-        self.points_hash = 0
+        self.project_path = ''
+        self.project_data = {}
         self.open('home')
 
     def draw(self) -> None:
@@ -26,13 +40,17 @@ class Sidebar:
             self.pages[self.page], (SIDEBAR_MID, 10-max(0, 1-(time.time()-self.page_open_time)/0.3)**2*100), 'midtop', 3).bottom
         if self.page == 'home':
             self.draw_home(start)
+        elif self.page == 'pick_beats':
+            self.draw_pick_beats(start)
+        elif self.page == 'edit':
+            self.draw_edit(start)
         elif self.page == 'settings':
             self.draw_settings(start)
 
-    def add_button(self, name: str, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=lambda: print('Ding dong~'), background: str = '', text: str = '') -> None:
+    def add_button(self, name: str, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=lambda: print('Ding dong~'), background: str = '', text: str = '', todo_with_arg: bool = False) -> None:
         if name not in self.buttons:
             self.buttons[name] = Button(
-                self.window, icon, pos, align, todo, background, text)
+                self.window, icon, pos, align, todo, background, text, todo_with_arg)
         else:
             self.buttons[name].move(pos)
         return self.buttons[name].draw()
@@ -50,12 +68,58 @@ class Sidebar:
         self.buttons['settings'].draw()
 
         t = self.window.draw_text(
-            '新建谱面', (SIDEBAR_LEFT+10, start+20), 'topleft')
+            '创建工程', (SIDEBAR_LEFT+10, start+20), 'topleft')
         self.add_button('new', self.icons['go'], (WINDOW_SIZE[0]-10,
-                        t.centery), 'midright', self.new_chart_wizard, 'circle')
+                        t.centery), 'midright', self.create_project, 'circle', '进入')
 
-    def new_chart_wizard(self) -> None:
-        popup.print('Hello world!', '新建谱面')
+        t = self.window.draw_text(
+            '打开工程', (SIDEBAR_LEFT+10, t.bottom+10), 'topleft')
+        self.add_button('open', self.icons['go'], (WINDOW_SIZE[0]-10,
+                        t.centery), 'midright', self.open_project, 'circle', '进入')
+
+    def create_project(self) -> None:
+        project_name = popup.input('请输入工程名称', '创建工程')
+        if not project_name:
+            return
+        music_path = popup.open('请选择歌曲音频', '歌曲音频', 'mp3')
+        if not music_path:
+            return
+        project_path = popup.save(
+            '请先保存工程文件', project_name+'.json', '工程文件', 'json')
+        if not project_path:
+            return
+        self.project_path = project_path
+        self.project_data = {
+            "project_name": project_name,
+            "music_path": music_path,
+            "beats": [],
+            "notes": [],
+            "line": {
+                "initial_position": DEFAULT_LINE_INITIAL_POSITION,
+                "motions": []
+            }
+        }
+        self.open('pick_beats')
+
+    def draw_pick_beats(self, start) -> None:
+        self.window.set_title(self.project_path)
+        self.buttons['return'].draw()
+
+        def play_pause(button: Button) -> None:
+            if self.player.playing:
+                print('pause')
+                self.player.pause()
+                button.change(self.icons['play'])
+            else:
+                print('play')
+                self.player.play()
+                button.change(self.icons['pause'])
+        t = self.add_button(
+            'play_pause', self.icons['play'], (10, 10), 'topleft', play_pause, 'rect', todo_with_arg=True)
+
+    def draw_edit(self, start) -> None:
+        self.window.set_title(self.project_path)
+        self.buttons['return'].draw()
 
     def draw_settings(self, start) -> None:
         self.buttons['return'].draw()
@@ -90,18 +154,59 @@ class Sidebar:
         self.add_button('set_main_color', self.icons['set'], (
             WINDOW_SIZE[0]-10, t.centery), 'midright', self.window.set_main_color, 'rect')
 
+    def open_project(self) -> None:
+        project_path = popup.open('打开工程', '工程文件', 'json')
+        if not project_path:
+            return
+        self.project_path = project_path
+        self.project_data = json.load(open(project_path))
+        if self.project_data['beats']:
+            self.open('edit')
+        else:
+            self.open('pick_beats')
+
+    def save_project(self, path=None) -> None:
+        json.dump(self.project_data, open(
+            path if path else self.project_path, 'w'))
+
+    def save_and_return(self, type=0) -> None:
+        if self.project_path:
+            if type == 1:
+                self.save_project(f'Autosave_{int(time.time())}.json')
+            if popup.yesno('是否保存工程文件？', ['返回', '退出程序'][type], '保存'):
+                self.save_project()
+            if type == 0:
+                self.project_path = ''
+                self.project_data = {}
+                self.open('home')
+                self.player.close()
+
     def open(self, page) -> None:
         self.page = page
         self.page_open_time = time.time()
         if page == 'home':
             self.open_home()
+        elif page == 'pick_beats':
+            self.open_pick_beats()
+        elif page == 'edit':
+            self.open_edit()
         elif page == 'settings':
             self.open_settings()
 
     def open_home(self) -> None:
-        self.points_hash = 0
         self.buttons = {'settings': Button(self.window, self.icons['settings'],
                                            (WINDOW_SIZE[0]-60, WINDOW_SIZE[1]-60), 'topleft', lambda: self.open('settings'), 'circle', '设置')}
+        self.sliders = {}
+
+    def open_pick_beats(self) -> None:
+        self.player.open(self.project_data['music_path'])
+        self.buttons = {'return': Button(self.window, self.icons['return'],
+                                         (SIDEBAR_LEFT+10, 10), 'topleft', self.save_and_return, 'circle', '返回')}
+        self.sliders = {}
+
+    def open_edit(self) -> None:
+        self.buttons = {'return': Button(self.window, self.icons['return'],
+                                         (SIDEBAR_LEFT+10, 10), 'topleft', self.save_and_return, 'circle', '返回')}
         self.sliders = {}
 
     def open_settings(self) -> None:

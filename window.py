@@ -35,6 +35,7 @@ class Window:
     def __init__(self, cp: ConfigParser) -> None:
         pygame.init()
         self.screen = pygame.display.set_mode(WINDOW_SIZE)
+        self.on_exit = None
         pygame.display.set_caption(WINDOW_TITLE)
         self.fonts = [[pygame.font.Font(os.path.join(
             RESOURCES, 'fonts', m), 18+i*8) for i in range(4)] for m in ('FZFWQingYinTiJWL.ttf', 'CascadiaCode.ttf')]
@@ -199,9 +200,8 @@ class Window:
         错误弹窗。
         """
         if serious:
-            popup.print(msg, title='出错了', okstr='退出程序')
-            pygame.quit()
-            sys.exit()
+            popup.print(msg, title='出错了', okstr='退出')
+            self.exit()
         else:
             popup.print(msg, title='提示', okstr='我知道了')
 
@@ -220,9 +220,17 @@ class Window:
             elif event.type == pygame.MOUSEBUTTONUP:
                 ret.append(event)
             elif event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                if popup.yesno('真的要退出程序吗？', '不要离开我啊 QwQ', '拜拜啦', '继续陪你!'):
+                    self.exit()
         return ret
+
+    def exit(self) -> None:
+        """
+        退出程序。
+        """
+        self.on_exit(1)
+        pygame.quit()
+        sys.exit()
 
     def update(self) -> None:
         """
@@ -232,7 +240,7 @@ class Window:
 
 
 class Button:
-    def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=lambda: print('Ding dong~'), background: str = '', text: str = '') -> None:
+    def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=lambda: print('Ding dong~'), background: str = '', text: str = '',todo_with_arg:bool=False) -> None:
         self.window = window
         self.icon = icon
         self.align = align
@@ -240,6 +248,7 @@ class Button:
         self.todo = todo
         self.background = background
         self.text = text
+        self.todo_with_arg=todo_with_arg
         self.rect = self.icon.get_rect()
         exec(f'self.rect.{align}=pos')
         self.touch_time = 0
@@ -275,9 +284,16 @@ class Button:
         self.rect = self.icon.get_rect()
         exec(f'self.rect.{self.align}=pos')
 
+    def change(self, icon: pygame.Surface) -> None:
+        self.icon = icon
+        self.size = icon.get_size()
+
     def process_click_event(self, mouse_pos: tuple) -> None:
         if self.rect.collidepoint(*mouse_pos):
-            self.todo()
+            if self.todo_with_arg:
+                self.todo(self)
+            else:
+                self.todo()
 
 
 class Slider:

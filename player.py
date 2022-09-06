@@ -104,7 +104,8 @@ class Player:
                 pygame.mixer.music.set_volume(vol_bak)
                 pygame.mixer.music.set_endevent(pygame.USEREVENT)
                 pygame.mixer.music.play()
-                self.playing = True
+                pygame.mixer.music.pause()
+                self.playing = False
                 self.ready = True
                 self.opening = False
 
