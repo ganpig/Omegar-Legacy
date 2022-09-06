@@ -1,3 +1,7 @@
+"""
+该文件修改自 https://github.com/PyPigStudio/PyPigPlayer。
+"""
+
 import tkinter
 import tkinter.filedialog
 
@@ -14,7 +18,7 @@ def open(title: str, name: str, type: str) -> str:
     tk.withdraw()
     file = tkinter.filedialog.askopenfilename(
         title=title, filetypes=[(name, type)]
-        )
+    )
     tk.destroy()
     return file
 
