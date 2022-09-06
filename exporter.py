@@ -340,4 +340,4 @@ def export_wizard() -> None:
 
 if __name__ == '__main__':
     export_wizard()
-    # convert_chart(r'docs\Example-Project.json', r'docs\Example-Chart.omgc')
+    # convert_chart('docs/Example-Project.json', 'docs/Example-Chart.omgc')
