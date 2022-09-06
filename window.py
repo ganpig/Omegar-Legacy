@@ -46,7 +46,7 @@ class Window:
             self.cp.add_section('window')
 
         # 设置窗口背景
-        self.background = self.get_or_set('background', '#000000')
+        self.background = self.get_or_set('background', '#c2e3eb')
         if self.background.startswith('#'):
             self.apply_bg_mode('color')
         else:
@@ -54,12 +54,12 @@ class Window:
 
         # 设置主题颜色
         try:
-            self.main_color_hex = self.get_or_set('main_color', '#ffffff')
+            self.main_color_hex = self.get_or_set('main_color', '#dd10fa')
             self.main_color = [int(self.main_color_hex[i:i+2], 16)
                                for i in range(1, 7, 2)]
         except:
             self.main_color = (255, 255, 255)
-            self.cp.set('window', 'main_color', '#ffffff')
+            self.cp.set('window', 'main_color', '#dd10fa')
 
         self.cp.write(open('config.ini', 'w', encoding='utf-8'))
 
@@ -86,9 +86,9 @@ class Window:
                 self.bg_color = tuple(int(self.background[i:i+2], 16)
                                       for i in range(1, 7, 2))
             except:
-                self.background = '#000000'
+                self.background = '#c2e3eb'
                 self.bg_color = (0, 0, 0)
-                self.cp.set('window', 'background', '#000000')
+                self.cp.set('window', 'background', '#c2e3eb')
         elif mode == 'image':
             try:
                 self.bg_image = pygame.transform.scale(
@@ -107,9 +107,9 @@ class Window:
                 self.bg_image_with_mask.blit(mask, (0, 0))
             except:
                 self.bg_mode = 'color'
-                self.background = '#000000'
+                self.background = '#c2e3eb'
                 self.bg_color = (0, 0, 0)
-                self.cp.set('window', 'background', '#000000')
+                self.cp.set('window', 'background', '#c2e3eb')
 
     def change_bg_mode(self) -> None:
         """
