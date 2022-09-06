@@ -9,8 +9,9 @@ import tkinter
 import tkinter.colorchooser
 from configparser import ConfigParser
 
-import easygui
 import pygame
+
+import popup
 
 WINDOW_SIZE = (1000, 600)
 WINDOW_TITLE = 'Omegar v0.1'
@@ -60,6 +61,12 @@ class Window:
             self.cp.set('window', 'main_color', '#ffffff')
 
         self.cp.write(open('config.ini', 'w', encoding='utf-8'))
+
+    def set_title(self, title: str = '') -> None:
+        if not title:
+            pygame.display.set_caption(WINDOW_TITLE)
+        else:
+            pygame.display.set_caption(title+' - '+WINDOW_TITLE)
 
     def get_or_set(self, key: str, default: str) -> str:
         if self.cp.has_option('window', key):
@@ -130,7 +137,7 @@ class Window:
         """
         设置背景图片。
         """
-        image = easygui.fileopenbox('选择背景图片')
+        image = popup.open('选择背景图片')
         if image:
             try:
                 pygame.image.load(image)
@@ -192,11 +199,11 @@ class Window:
         错误弹窗。
         """
         if serious:
-            easygui.msgbox(msg, title='出错了', ok_button='退出程序')
+            popup.print(msg, title='出错了', okstr='退出程序')
             pygame.quit()
             sys.exit()
         else:
-            easygui.msgbox(msg, title='提示', ok_button='我知道了')
+            popup.print(msg, title='提示', okstr='我知道了')
 
     def process_events(self) -> list:
         """
