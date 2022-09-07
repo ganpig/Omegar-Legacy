@@ -1,6 +1,7 @@
 __pycache__/
-temp.*
 .DS_Store
 .vscode
-config.ini
 Autosave_*
+config.ini
+pipfile
+temp.*

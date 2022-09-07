@@ -1,7 +1,6 @@
 import json
 import os
 from configparser import ConfigParser
-import traceback
 
 import easygui
 import pygame

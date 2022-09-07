@@ -1,5 +1,5 @@
 """
-该文件修改自 https://github.com/PyPigStudio/PyPigPlayer。
+该文件修改自 https://github.com/PyPigStudio/PyPigPlayer
 """
 
 import time
