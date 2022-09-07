@@ -9,9 +9,8 @@ import tkinter
 import tkinter.colorchooser
 from configparser import ConfigParser
 
+import easygui
 import pygame
-
-import popup
 
 WINDOW_SIZE = (1000, 600)
 WINDOW_TITLE = 'Omegar v0.1'
@@ -138,7 +137,7 @@ class Window:
         """
         设置背景图片。
         """
-        image = popup.open('选择背景图片')
+        image = easygui.fileopenbox('选择背景图片', WINDOW_TITLE)
         if image:
             try:
                 pygame.image.load(image)
@@ -200,10 +199,10 @@ class Window:
         错误弹窗。
         """
         if serious:
-            popup.print(msg, title='出错了', okstr='退出')
+            easygui.msgbox(msg, '出错了', '退出')
             self.exit()
         else:
-            popup.print(msg, title='提示', okstr='我知道了')
+            easygui.msgbox(msg, '提示', '知道了')
 
     def process_events(self) -> list:
         """
@@ -220,7 +219,7 @@ class Window:
             elif event.type == pygame.MOUSEBUTTONUP:
                 ret.append(event)
             elif event.type == pygame.QUIT:
-                if popup.yesno('真的要退出程序吗？', '不要离开我啊 QwQ', '拜拜啦', '继续陪你!'):
+                if easygui.ynbox('真的要退出程序吗？', '不要离开我啊 QwQ', ('拜拜啦', '继续陪你!')):
                     self.exit()
         return ret
 
@@ -240,7 +239,7 @@ class Window:
 
 
 class Button:
-    def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=lambda: print('Ding dong~'), background: str = '', text: str = '',todo_with_arg:bool=False) -> None:
+    def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=lambda: print('Ding dong~'), background: str = '', text: str = '', todo_with_arg: bool = False) -> None:
         self.window = window
         self.icon = icon
         self.align = align
@@ -248,7 +247,7 @@ class Button:
         self.todo = todo
         self.background = background
         self.text = text
-        self.todo_with_arg=todo_with_arg
+        self.todo_with_arg = todo_with_arg
         self.rect = self.icon.get_rect()
         exec(f'self.rect.{align}=pos')
         self.touch_time = 0

@@ -18,14 +18,14 @@ def open(title: str, name: str = '', type: str = '') -> str:
     tk.withdraw()
     if name and type:
         file = tkinter.filedialog.askopenfilename(
-            title=title, filetypes=[(name, type)])
+            title=title, filetypes=[(name, '*.'+type)])
     else:
         file = tkinter.filedialog.askopenfilename(title=title)
     tk.destroy()
     return file
 
 
-def folder(title: str) -> str:
+def folder(title: str = '选择文件夹') -> str:
     """
     打开文件夹。
     """
@@ -36,7 +36,7 @@ def folder(title: str) -> str:
     return folder
 
 
-def print(msg: str, title: str, okstr: str = '确认') -> None:
+def print(msg: str, title: str = '', okstr: str = '确认') -> None:
     """
     提示框。
     """
@@ -70,7 +70,7 @@ def save(title: str, default: str = None, name: str = '', type: str = '') -> str
     return file
 
 
-def input(msg: str, title: str) -> str:
+def input(msg: str, title: str = '') -> str:
     """
     输入框。
     """
@@ -98,7 +98,7 @@ def input(msg: str, title: str) -> str:
     return text
 
 
-def yesno(msg: str, title: str, yesstr: str = '确认', nostr: str = '取消') -> bool:
+def yesno(msg: str, title: str = '', yesstr: str = '确认', nostr: str = '取消') -> bool:
     """
     确认框。
     """

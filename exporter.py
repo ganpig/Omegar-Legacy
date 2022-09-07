@@ -8,7 +8,7 @@ import struct
 import tempfile
 import zipfile
 
-import popup
+import easygui
 
 # 可见区域边界
 TOP_EDGE = 0
@@ -250,94 +250,108 @@ def build_folder(info_path: str, music_path: str, illustration_path: str, charts
         folder_path, 'illustration.png'))
     for chart_info in charts_info:
         shutil.copy(chart_info['omgc_path'],
-                    os.path.join(folder_path, 'charts', charts_info['difficulty']+'.omgc'))
+                    os.path.join(folder_path, 'charts', chart_info['difficulty']+'.omgc'))
 
 
 def export_wizard() -> None:
     """
     导出向导。
     """
-    if popup.yesno('是否使用已有的生成设置?', '导出'):
-        pickle_path = popup.open('请选择生成设置文件', '生成设置文件', 'pickle')
-        if pickle_path:
-            name, composer, illustrator, music_path, illustration_path, charts_info = pickle.load(
-                open(pickle_path, 'rb'))  # 从 pickle 文件读取生成设置
+    try:
+        if easygui.ynbox('是否使用已有的生成设置？（首次使用请选择后者）', '导出工程', ('使用已有生成设置', '创建新的生成设置')):
+            using_pickle = True
+            pickle_path = easygui.fileopenbox(
+                '请选择生成设置文件', '导出工程', '*.pickle', ['*.pickle'])
+            if pickle_path:
+                name, composer, illustrator, music_path, illustration_path, charts_info = pickle.load(
+                    open(pickle_path, 'rb'))  # 从 pickle 文件读取生成设置
+            else:
+                return
         else:
-            return
-    else:
-        name = popup.input('请输入曲名', '导出')
-        if not name:
-            return
-
-        composer = popup.input('请输入曲师', '导出')
-        if not composer:
-            return
-
-        illustrator = popup.input('请输入画师', '导出')
-        if not illustrator:
-            return
-
-        music_path = popup.open('请选择歌曲音频', '歌曲音频', 'ogg')
-        if not music_path:
-            return
-
-        illustration_path = popup.open('请选择曲绘', '曲绘', 'png')
-        if not illustration_path:
-            return
-
-        charts_info = []
-        while True:
-            if charts_info:  # 一张谱面都没添加时无法继续
-                if not popup.yesno(f'已添加 {len(charts_info)} 张谱面，是否继续？', '导出'):
+            using_pickle = False
+            data = ['']*3
+            while True:
+                data = easygui.multenterbox(
+                    '请输入歌曲信息：', '导出工程', ['曲名', '曲师', '画师'], data)
+                if not data:
+                    return
+                if not all(data):
+                    easygui.msgbox('请将歌曲信息填写完整！', '导出工程', '哦~')
+                else:
+                    name, composer, illustrator = data
                     break
 
-            difficulty = popup.input(
-                '请输入谱面难度', f'添加第 {len(charts_info)+1} 张谱面')
-            if not difficulty:
-                continue
+            music_path = easygui.fileopenbox(
+                '请选择歌曲音频', '导出工程', '*.ogg', ['*.ogg'])
+            if not music_path:
+                return
 
-            diff_number = popup.input(
-                '请输入谱面定数', f'添加第 {len(charts_info)+1} 张谱面')
-            if not diff_number:
-                continue
+            illustration_path = easygui.fileopenbox(
+                '请选择曲绘图片', '导出工程', '*.png', ['*.png'])
+            if not illustration_path:
+                return
 
-            writer = popup.input(
-                '请输入谱师', f'添加第 {len(charts_info)+1} 张谱面')
-            if not writer:
-                continue
+            charts_info = []
+            while True:
+                if charts_info:  # 一张谱面都没添加时无法继续
+                    if not easygui.ynbox(f'已添加 {len(charts_info)} 张谱面：\n'+'\n'.join(
+                            f'{i["difficulty"]} {i["diff_number"]} By {i["writer"]} ({i["json_path"]})'
+                            for i in charts_info), '导出工程', ('继续', '完成')):
+                        break
 
-            json_path = popup.open('请选择谱面工程文件', '谱面工程文件', 'json')
-            if not json_path:
-                continue
+                data = ['']*3
+                while True:
+                    data = easygui.multenterbox(
+                        f'请输入第 {len(charts_info)+1} 张谱面信息：', '导出工程', ['难度', '定数', '谱师'], data)
+                    if not data:
+                        return
+                    if not all(data):
+                        easygui.msgbox('请将谱面信息填写完整！', '导出工程', '哦~')
+                    else:
+                        difficulty, diff_number, writer = data
+                        break
 
-            charts_info.append(
-                {'difficulty': difficulty, 'diff_number': diff_number, 'writer': writer, 'json_path': json_path})
+                json_path = easygui.fileopenbox(
+                    '请选择谱面工程文件', '导出工程', '*.json', ['*.json'])
+                if not json_path:
+                    if charts_info:
+                        continue
+                    else:
+                        break
 
-    convert_charts(charts_info)
-    info_path = make_info(name, composer, illustrator, charts_info)
+                charts_info.append(
+                    {'difficulty': difficulty, 'diff_number': diff_number, 'writer': writer, 'json_path': json_path})
 
-    if popup.yesno('是否打包成 omgz 文件？', '导出'):
-        ok = omgz_path = popup.save(
-            '保存 omgz 文件', name+'.omgz', 'Omega 曲谱文件', 'omgz')
-        if ok:
-            build_omgz(info_path, music_path,
-                       illustration_path, charts_info, omgz_path)
-    else:
-        popup.print('建议新建文件夹，否则选择的文件夹将被清空！', '导出')
-        ok = folder_path = popup.folder('选择导出文件夹')
-        if ok:
-            build_folder(info_path, music_path, illustration_path,
-                         charts_info, folder_path)
+        convert_charts(charts_info)
+        info_path = make_info(name, composer, illustrator, charts_info)
 
-    if popup.yesno('是否保存生成设置？', '文件已导出' if ok else '文件未导出'):
-        pickle_path = popup.save(
-            '保存生成设置', name+'.pickle', '生成设置文件', 'pickle')  # 将生成设置保存到 pickle 文件
-        if pickle_path:
-            pickle.dump((name, composer, illustrator, music_path,
-                        illustration_path, charts_info), open(pickle_path, 'wb'))
-            popup.print('生成设置保存成功!', '导出')
+        if easygui.ynbox('请选择导出方式', '导出工程', ('打包为 OMGZ 文件', '导出到文件夹')):
+            ok = omgz_path = easygui.filesavebox(
+                '保存 omgz 文件', '导出工程', name+'.omgz',  ['*.omgz'])
+            if ok:
+                build_omgz(info_path, music_path,
+                           illustration_path, charts_info, omgz_path)
+        else:
+            easygui.msgbox('建议新建文件夹，否则选择的文件夹将被清空！', '导出工程', '哦~')
+            ok = folder_path = easygui.diropenbox('选择导出文件夹', '导出工程')
+            if ok:
+                build_folder(info_path, music_path, illustration_path,
+                             charts_info, folder_path)
+    except:
+        easygui.exceptionbox('导出失败了……www', '导出工程')
+        return
+
+    easygui.msgbox('谱面导出成功！', '导出工程', '好耶')
+
+    if not using_pickle:
+        if easygui.ynbox('是否保存生成设置以便以后导出同一工程使用？', '文件已导出' if ok else '文件未导出', ('保存', '不保存')):
+            pickle_path = easygui.filesavebox(
+                '保存生成设置', '导出工程', name+'.pickle', ['*.pickle'])  # 将生成设置保存到 pickle 文件
+            if pickle_path:
+                pickle.dump((name, composer, illustrator, music_path,
+                            illustration_path, charts_info), open(pickle_path, 'wb'))
+                easygui.msgbox('生成设置保存成功!', '导出工程', '好耶')
 
 
 if __name__ == '__main__':
     export_wizard()
-    # convert_chart('docs/Example-Project.json', 'docs/Example-Chart.omgc')

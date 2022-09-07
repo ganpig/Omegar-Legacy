@@ -1,11 +1,13 @@
 import json
 import os
 from configparser import ConfigParser
+import traceback
 
+import easygui
 import pygame
 
+import exporter
 import player
-import popup
 from window import *
 
 DEFAULT_LINE_INITIAL_POSITION = 800  # 默认判定线初始位置
@@ -77,29 +79,39 @@ class Sidebar:
         self.add_button('open', self.icons['go'], (WINDOW_SIZE[0]-10,
                         t.centery), 'midright', self.open_project, 'circle', '进入')
 
+        t = self.window.draw_text(
+            '导出工程', (SIDEBAR_LEFT+10, t.bottom+10), 'topleft')
+        self.add_button('export', self.icons['go'], (WINDOW_SIZE[0]-10,
+                        t.centery), 'midright', exporter.export_wizard, 'circle', '进入')
+
     def create_project(self) -> None:
-        project_name = popup.input('请输入工程名称', '创建工程')
-        if not project_name:
-            return
-        music_path = popup.open('请选择歌曲音频', '歌曲音频', 'mp3')
-        if not music_path:
-            return
-        project_path = popup.save(
-            '请先保存工程文件', project_name+'.json', '工程文件', 'json')
-        if not project_path:
-            return
-        self.project_path = project_path
-        self.project_data = {
-            "project_name": project_name,
-            "music_path": music_path,
-            "beats": [],
-            "notes": [],
-            "line": {
-                "initial_position": DEFAULT_LINE_INITIAL_POSITION,
-                "motions": []
+        try:
+            project_name = easygui.enterbox('请输入工程名称', '创建工程')
+            if not project_name:
+                return
+            music_path = easygui.fileopenbox(
+                '请选择歌曲音频', WINDOW_TITLE, '*.mp3', ['*.mp3'])
+            if not music_path:
+                return
+            project_path = easygui.filesavebox(
+                '请先保存工程文件', WINDOW_TITLE, project_name+'.json', ['*.json'])
+            if not project_path:
+                return
+            self.project_path = project_path
+            self.project_data = {
+                "project_name": project_name,
+                "music_path": music_path,
+                "beats": [],
+                "notes": [],
+                "line": {
+                    "initial_position": DEFAULT_LINE_INITIAL_POSITION,
+                    "motions": []
+                }
             }
-        }
-        self.open('pick_beats')
+            self.open('pick_beats')
+        except:
+            easygui.exceptionbox('创建工程失败！', WINDOW_TITLE)
+            self.return_home()
 
     def draw_pick_beats(self, start) -> None:
         self.window.set_title(self.project_path)
@@ -155,15 +167,21 @@ class Sidebar:
             WINDOW_SIZE[0]-10, t.centery), 'midright', self.window.set_main_color, 'rect')
 
     def open_project(self) -> None:
-        project_path = popup.open('打开工程', '工程文件', 'json')
-        if not project_path:
-            return
-        self.project_path = project_path
-        self.project_data = json.load(open(project_path))
-        if self.project_data['beats']:
-            self.open('edit')
-        else:
-            self.open('pick_beats')
+        try:
+            project_path = easygui.fileopenbox(
+                '打开工程', WINDOW_TITLE, '*.json', ['*.json'])
+            if not project_path:
+                return
+            self.project_path = project_path
+            self.project_data = json.load(open(project_path))
+            if self.project_data['beats']:
+                self.open('edit')
+            else:
+                self.open('pick_beats')
+
+        except:
+            easygui.exceptionbox('打开工程失败！', WINDOW_TITLE)
+            self.return_home()
 
     def save_project(self, path=None) -> None:
         json.dump(self.project_data, open(
@@ -173,13 +191,16 @@ class Sidebar:
         if self.project_path:
             if type == 1:
                 self.save_project(f'Autosave_{int(time.time())}.json')
-            if popup.yesno('是否保存工程文件？', ['返回', '退出程序'][type], '保存'):
+            if easygui.ynbox(f'是否保存工程文件为 {self.project_path}？', ['返回首页', '退出程序'][type], ('保存', '不保存')):
                 self.save_project()
             if type == 0:
-                self.project_path = ''
-                self.project_data = {}
-                self.open('home')
-                self.player.close()
+                self.return_home()
+
+    def return_home(self) -> None:
+        self.project_path = ''
+        self.project_data = {}
+        self.open('home')
+        self.player.close()
 
     def open(self, page) -> None:
         self.page = page
@@ -195,7 +216,7 @@ class Sidebar:
 
     def open_home(self) -> None:
         self.buttons = {'settings': Button(self.window, self.icons['settings'],
-                                           (WINDOW_SIZE[0]-60, WINDOW_SIZE[1]-60), 'topleft', lambda: self.open('settings'), 'circle', '设置')}
+                                           (WINDOW_SIZE[0]-10, WINDOW_SIZE[1]-10), 'bottomright', lambda: self.open('settings'), 'circle', '设置')}
         self.sliders = {}
 
     def open_pick_beats(self) -> None:
