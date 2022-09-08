@@ -99,12 +99,7 @@ class Player:
         """
         if self.ready:
             self.playing = False
-            pos_bak = self.get_pos()
-            pygame.mixer.music.fadeout(int(MUSIC_FADEOUT_TIME*1000))
-            time.sleep(MUSIC_FADEOUT_TIME)
-            pygame.mixer.music.play()
             pygame.mixer.music.pause()
-            self.set_pos(pos_bak+MUSIC_FADEOUT_TIME)
 
     def replay(self) -> None:
         """

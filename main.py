@@ -20,6 +20,8 @@ from ui import *
 
 class App:
     buttons: dict = {}  # 按钮
+    later_buttons: dict = {}  # 延迟添加的按钮
+    later_del_buttons: list = []  # 延迟删除的按钮
     sliders: dict = {}  # 滑动条
     project_path: str = ''  # 工程文件路径
     project_data: dict = {}  # 工程数据
@@ -99,6 +101,11 @@ class App:
                     slider.process_release_event(event.pos)
             elif event.type == pygame.USEREVENT:
                 self.player.replay()
+        self.buttons.update(self.later_buttons)
+        self.later_buttons = {}
+        for i in self.later_del_buttons:
+            del self.buttons[i]
+        self.later_del_buttons = []
 
     """
     UI 操作
@@ -127,6 +134,19 @@ class App:
         else:
             self.sliders[name].move(pos)
         return self.sliders[name].show()
+
+    def later_add_button(self, name: str, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', text_align: str = 'midright', button_align: str = 'midleft', todo_with_arg: bool = False, todo_right=None) -> None:
+        """
+        延迟添加按钮。
+        """
+        self.later_buttons[name] = Button(self.window, icon, pos, align, todo,
+                                          background, text, text_align, button_align, todo_with_arg, todo_right)
+
+    def later_del_button(self, name: str) -> None:
+        """
+        延迟删除按钮。
+        """
+        self.later_del_buttons.append(name)
 
     """
     工程操作
@@ -563,11 +583,64 @@ class App:
                 self.player.play()
                 button.change_icon(ICONS['pause'])
         t1 = self.show_button(
-            'play_or_pause', ICONS['pause' if self.player.get_playing() else 'play'], (10, 10), 'topleft', play_or_pause, 'rect', '播放/暂停', 'midleft', 'midright', True)
-        t2 = self.show_button('add_beat', ICONS['add'], (SPLIT_LINE-10, 10), 'topright', lambda: easygui.msgbox(
-            '你添加了一个弱拍！'), 'rect', '左击添加弱拍，右击添加强拍', todo_right=lambda: easygui.msgbox('你添加了一个强拍！'))
+            'play_or_pause', ICONS['pause' if self.player.get_playing() else 'play'], (10, 0), 'topleft', play_or_pause, 'rect', '播放/暂停', 'midleft', 'midright', True)
+
+        def del_strong_beat(sec: float) -> None:
+            for i in range(len(self.project_data['beats'])):
+                if self.project_data['beats'][i][0] == sec:
+                    for j in self.project_data['beats'][i]:
+                        self.later_del_button(j)
+                    del self.project_data['beats'][i]
+                    break
+
+        def del_normal_beat(sec: float) -> None:
+            for i in range(len(self.project_data['beats'])):
+                if self.project_data['beats'][i][0] > sec:
+                    break
+            for j in range(len(self.project_data['beats'][i-1])):
+                if self.project_data['beats'][i-1][j] == sec:
+                    del self.project_data['beats'][i-1][j]
+            self.later_del_button(sec)
+
+        def add_strong_beat(sec: float = -1) -> None:
+            if sec == -1:
+                sec = self.player.get_pos()
+            self.project_data['beats'].append([sec])
+            self.later_add_button(sec, ICONS['orange_beat'], (
+                0, 0), 'center', lambda: del_strong_beat(sec), 'circle', '删除小节', 'midtop', 'midbottom')
+
+        def add_normal_beat(sec: float = -1) -> None:
+            if sec == -1:
+                sec = self.player.get_pos()
+            if not self.project_data['beats']:
+                add_strong_beat(sec)
+            else:
+                self.project_data['beats'][-1].append(sec)
+                self.later_add_button(sec, ICONS['green_beat'], (
+                    0, 0), 'center', lambda: del_normal_beat(sec), 'circle', '删除拍子', 'midtop', 'midbottom')
+
+        t2 = self.show_button('add_beat', ICONS['add'], (SPLIT_LINE-10, 10), 'topright',
+                              add_normal_beat, 'rect', '左击添加弱拍，右击添加强拍', todo_right=add_strong_beat)
+
+        def set_player_pos() -> None:
+            pos = easygui.enterbox('请输入定位秒数', '控制播放进度')
+            if pos:
+                try:
+                    self.player.set_pos(float(pos))
+                except:
+                    easygui.msgbox('请输入一个整数或小数！', '控制播放进度')
         t = self.show_slider('music_pos', (t1.right+10, t1.centery), t2.left-t1.right-20, align='midleft', get_value=self.player.get_prog,
-                             set_value=self.player.set_prog, get_text=self.player.get_text, text_align='midtop', button_align='midbottom')
+                             set_value=self.player.set_prog, set_directly=set_player_pos, get_text=self.player.get_text, text_align='midtop', button_align='midbottom')
+
+        pygame.draw.line(self.window.screen, self.window.main_color, (SPLIT_LINE/2,
+                         WINDOW_SIZE[1]/2-50), (SPLIT_LINE/2, WINDOW_SIZE[1]/2+50), 5)
+
+        for sec in self.buttons:
+            if type(sec) == float:
+                pos = SPLIT_LINE/2+PICK_BEAT_SPEED*(sec-self.player.get_pos())
+                self.buttons[sec].move((pos, WINDOW_SIZE[1]/2))
+                if 0 < self.buttons[sec].rect.right < SPLIT_LINE:
+                    self.buttons[sec].show()
 
     """
     谱面编辑页面

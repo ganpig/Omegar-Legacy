@@ -6,7 +6,7 @@ import pygame
 pygame.init()
 
 """
-主程序相关
+程序 UI 相关
 """
 
 # 窗口标题
@@ -54,17 +54,19 @@ for font in FONT_LIST:
 
 # 图标名称和大小
 ICON_INFO: dict = {
-    'add':      (40, 40),
-    'change':   (65, 30),
-    'crystal':  (SLIDER_BUTTON_SIZE,)*2,
-    'go':       (40, 40),
-    'help':     (20, 20),
-    'pause':    (40, 40),
-    'play':     (40, 40),
-    'return':   (50, 50),
-    'set':      (65, 30),
-    'settings': (50, 50),
-    'warning':  (SLIDER_BUTTON_SIZE,)*2
+    'add':          (40, 40),
+    'change':       (65, 30),
+    'crystal':      (SLIDER_BUTTON_SIZE,)*2,
+    'go':           (40, 40),
+    'green_beat':   (30, 30),
+    'help':         (20, 20),
+    'orange_beat':  (30, 30),
+    'pause':        (40, 40),
+    'play':         (40, 40),
+    'return':       (50, 50),
+    'set':          (65, 30),
+    'settings':     (50, 50),
+    'warning':      (SLIDER_BUTTON_SIZE,)*2
 }
 
 ICONS = {}
@@ -85,6 +87,9 @@ PAGE_NAME = {
 工程相关
 """
 
+# 采拍时拍子图标每秒钟行走的像素数
+PICK_BEAT_SPEED = 300
+
 # 默认判定线初始位置
 DEFAULT_LINE_INITIAL_POSITION = 800
 
@@ -98,9 +103,6 @@ MUSIC_CHECK_DELAY = 0.02
 
 # 二分求时长的精确秒数
 MUSIC_CHECK_ACCURACY = 0.1
-
-# 暂停时的淡出时长
-MUSIC_FADEOUT_TIME = 0.5
 
 
 """
