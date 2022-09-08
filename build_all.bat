@@ -1,0 +1,1 @@
+@build_windows.bat&wsl sh build_linux.sh

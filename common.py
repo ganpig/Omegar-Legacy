@@ -18,6 +18,9 @@ WINDOW_SIZE = (1000, 600)
 # 分割线位置
 SPLIT_LINE = 600
 
+# 滑块大小
+SLIDER_BUTTON_SIZE = 20
+
 # 配置文件名称
 CONFIG_FILE = 'config.ini'
 
@@ -53,7 +56,7 @@ for font in FONT_LIST:
 ICON_INFO: dict = {
     'add':      (40, 40),
     'change':   (65, 30),
-    'crystal':  (20, 20),
+    'crystal':  (SLIDER_BUTTON_SIZE,)*2,
     'go':       (40, 40),
     'help':     (20, 20),
     'pause':    (40, 40),
@@ -61,7 +64,7 @@ ICON_INFO: dict = {
     'return':   (50, 50),
     'set':      (65, 30),
     'settings': (50, 50),
-    'warning':  (20, 20)
+    'warning':  (SLIDER_BUTTON_SIZE,)*2
 }
 
 ICONS = {}

@@ -15,13 +15,13 @@ class Window:
     窗口类。
     """
 
+    blit_list: list = []  # 延迟绘制列表
     mouse_pos: tuple = (0, 0)
     on_exit = None  # 退出程序时执行
 
     def __init__(self, cp: ConfigParser) -> None:
         self.cp = cp
         self.screen = pygame.display.set_mode(WINDOW_SIZE)
-        self.set_subtitle()
 
         if not self.cp.has_section('window'):
             self.cp.add_section('window')
@@ -225,6 +225,12 @@ class Window:
         exec(f'rect.{align}=pos')
         return self.screen.blit(render, rect)
 
+    def blit_top(self, surface: pygame.Surface, pos: tuple) -> None:
+        """
+        绘制在窗口最上层
+        """
+        self.blit_list.append((surface, pos))
+
     """
     程序流程相关部分
     """
@@ -249,6 +255,8 @@ class Window:
                 ret.append(event)
             elif event.type == pygame.MOUSEBUTTONUP:
                 ret.append(event)
+            elif event.type == pygame.USEREVENT:
+                ret.append(event)
             elif event.type == pygame.QUIT:
                 if easygui.ynbox('真的要退出程序吗？', '不要离开我啊 QwQ', ('退出', '手滑了')):
                     self.exit()
@@ -258,6 +266,8 @@ class Window:
         """
         刷新窗口。
         """
+        while self.blit_list:
+            self.screen.blit(*self.blit_list.pop())
         pygame.display.flip()
 
     def error(self, msg: str, serious: bool = False) -> None:
@@ -286,7 +296,7 @@ class Button:
 
     touch_time: float = 0  # 正值代表光标触碰按钮的时间，负值代表光标离开按钮的时间
 
-    def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', textalign: str = 'midright', btnalign: str = 'midleft', todo_with_arg: bool = False) -> None:
+    def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', text_align: str = 'midright', button_align: str = 'midleft', todo_with_arg: bool = False, todo_right=None) -> None:
         self.window = window
         self.icon = icon
         self.align = align
@@ -294,9 +304,10 @@ class Button:
         self.todo = todo
         self.background = background
         self.text = text
-        self.text_align = textalign
-        self.button_align = btnalign
+        self.text_align = text_align
+        self.button_align = button_align
         self.todo_with_arg = todo_with_arg  # 是否向 todo 函数传入 self 参数
+        self.todo_right = todo_right
         self.rect = self.icon.get_rect()
         exec(f'self.rect.{align}=pos')
 
@@ -327,7 +338,7 @@ class Button:
             tip.set_alpha(alpha)
             rect = tip.get_rect()
             exec(f'rect.{self.text_align}=self.rect.{self.button_align}')
-            self.window.screen.blit(tip, rect)
+            self.window.blit_top(tip, rect)
         return self.window.screen.blit(self.icon, self.rect)
 
     def move(self, pos: tuple) -> None:
@@ -344,15 +355,16 @@ class Button:
         self.icon = icon
         self.size = icon.get_size()
 
-    def process_click_event(self, mouse_pos: tuple) -> None:
+    def process_click_event(self, mouse_pos: tuple, button: int) -> None:
         """
         处理点击事件。
         """
         if self.rect.collidepoint(*mouse_pos):
-            if self.todo_with_arg:
-                self.todo(self)
-            else:
-                self.todo()
+            args = (self,)*self.todo_with_arg
+            if button == pygame.BUTTON_LEFT:
+                self.todo(*args)
+            elif button == pygame.BUTTON_RIGHT and self.todo_right:
+                self.todo_right(*args)
 
 
 class Slider:
@@ -361,9 +373,10 @@ class Slider:
     """
 
     click_pos: tuple = (0, 0)  # 点击滑块时的光标位置
+    setting: bool = False  # 是否处于“滑动即设置”状态
     touch_time: float = 0  # 见 Button 类说明
 
-    def __init__(self, window: Window, pos: tuple, length: int, width: int, align: str = 'topleft', get_value=None, set_value=None, set_directly=None, get_text=None) -> None:
+    def __init__(self, window: Window, pos: tuple, length: int, width: int = 10, align: str = 'topleft', get_value=None, set_value=None, set_directly=None, get_text=None, text_align: str = 'midright', button_align: str = 'midleft') -> None:
         self.window = window
         self.color = self.window.main_color
         self.pos = pos
@@ -374,8 +387,8 @@ class Slider:
         self.set_value = set_value
         self.set_directly = set_directly
         self.get_text = get_text
-        self.setting = False
-        self.size = 20
+        self.text_align = text_align
+        self.button_align = button_align
         self.icon_rect = ICONS['crystal'].get_rect()
         self.bar = pygame.Surface((length, width), pygame.SRCALPHA)
         self.bar_rect = self.bar.get_rect()
@@ -406,24 +419,25 @@ class Slider:
                 self.set_value(max(0, min(1, self.get_value())))
             elif self.window.mouse_pos != self.click_pos:
                 self.set_value(max(0, min(1,
-                                          (self.window.mouse_pos[0]-self.bar_rect.left-self.size/2)/(self.length-self.size))))
+                                          (self.window.mouse_pos[0]-self.bar_rect.left-SLIDER_BUTTON_SIZE/2)/(self.length-SLIDER_BUTTON_SIZE))))
         alpha = int((min(0.5, time.time()-self.touch_time) if self.touch_time
                     > 0 else max(0, -time.time()-self.touch_time))*510)
-        alpha_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
+        alpha_surface = pygame.Surface(
+            (SLIDER_BUTTON_SIZE, SLIDER_BUTTON_SIZE), pygame.SRCALPHA)
         pygame.draw.circle(alpha_surface, (*self.window.main_color,
-                           alpha), (self.size//2, self.size//2), self.size//2)
+                           alpha), (SLIDER_BUTTON_SIZE//2, SLIDER_BUTTON_SIZE//2), SLIDER_BUTTON_SIZE//2)
         self.icon_rect.midbottom = (
-            self.bar_rect.left+self.size/2+(self.length-self.size)*max(0, min(1, self.get_value())), self.bar_rect.centery)
+            self.bar_rect.left+SLIDER_BUTTON_SIZE/2+(self.length-SLIDER_BUTTON_SIZE)*max(0, min(1, self.get_value())), self.bar_rect.centery)
         self.window.screen.blit(alpha_surface, self.icon_rect)
         self.window.screen.blit(
             ICONS['crystal' if 0 <= self.get_value() <= 1 else 'warning'], self.icon_rect)
-        if self.touch_time > 0 and self.get_text and (not pygame.mouse.get_pressed()[0] or self.window.mouse_pos == self.click_pos):
+        if self.get_text:
             tip = FONTS[0][0].render(
                 self.get_text(), True, self.window.tip_color, self.window.main_color)
             tip.set_alpha(alpha)
             rect = tip.get_rect()
-            rect.midright = self.icon_rect.midleft
-            self.window.screen.blit(tip, rect)
+            exec(f'rect.{self.text_align}=self.icon_rect.{self.button_align}')
+            self.window.blit_top(tip, rect)
         return self.bar_rect
 
     def move(self, pos: tuple) -> None:

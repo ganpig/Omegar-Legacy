@@ -21,6 +21,7 @@ class Player:
 
     def __init__(self) -> None:
         pygame.mixer.init()
+        pygame.mixer.music.set_endevent(pygame.USEREVENT)
 
     def open(self, file: str) -> None:
         """
@@ -110,9 +111,17 @@ class Player:
         从头播放。
         """
         pygame.mixer.music.stop()
-        self.offset = 0
         pygame.mixer.music.play()
-        self.playing = True
+        pygame.mixer.music.pause()
+        self.offset = 0
+        self.playing = False
+
+    def get_playing(self) -> bool:
+        """
+        获取播放状态。
+        """
+        self.playing = pygame.mixer.music.get_busy()
+        return self.playing
 
     def get_pos(self) -> float:
         """
@@ -138,9 +147,12 @@ class Player:
         设置当前播放位置 (单位:秒)。
         """
         if self.ready:
-            pos = min(max(pos, 0), self.length)
-            pygame.mixer.music.set_pos(pos * self.rate)
-            self.offset = pos - pygame.mixer.music.get_pos() / 1000
+            try:
+                pos = min(max(pos, 0), self.length)
+                pygame.mixer.music.set_pos(pos * self.rate)
+                self.offset = pos - pygame.mixer.music.get_pos() / 1000
+            except:
+                self.replay()
 
     def set_prog(self, prog: float) -> float:
         """

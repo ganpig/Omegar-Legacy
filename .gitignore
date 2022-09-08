@@ -2,6 +2,9 @@ __pycache__/
 .DS_Store
 .vscode
 Autosave_*
+build/
 config.ini
-pipfile
+dist/
+Omegar*
+Pipfile
 temp.*
