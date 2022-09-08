@@ -1,8 +1,3 @@
-"""
-该文件修改自 https://github.com/ganpig/pwxysq。
-"""
-
-import os
 import sys
 import time
 import tkinter
@@ -12,40 +7,27 @@ from configparser import ConfigParser
 import easygui
 import pygame
 
-WINDOW_SIZE = (1000, 600)
-WINDOW_TITLE = 'Omegar v0.1'
-SIDEBAR_LEFT = WINDOW_SIZE[0]-400
-SIDEBAR_MID = (SIDEBAR_LEFT+WINDOW_SIZE[0])//2
-try:
-    RESOURCES = sys._MEIPASS
-except:
-    RESOURCES = '.'
-
-
-def askcolor(default, title):
-    tk = tkinter.Tk()
-    tk.withdraw()
-    color = tkinter.colorchooser.askcolor(default, title=title)[1]
-    tk.destroy()
-    return color
+from common import *
 
 
 class Window:
+    """
+    窗口类。
+    """
+
+    mouse_pos: tuple = (0, 0)
+    on_exit = None  # 退出程序时执行
+
     def __init__(self, cp: ConfigParser) -> None:
-        pygame.init()
-        self.screen = pygame.display.set_mode(WINDOW_SIZE)
-        self.on_exit = None
-        pygame.display.set_caption(WINDOW_TITLE)
-        self.fonts = [[pygame.font.Font(os.path.join(
-            RESOURCES, 'fonts', m), 18+i*8) for i in range(4)] for m in ('FZFWQingYinTiJWL.ttf', 'CascadiaCode.ttf')]
-        self.mouse_pos = (0, 0)
         self.cp = cp
+        self.screen = pygame.display.set_mode(WINDOW_SIZE)
+        self.set_subtitle()
 
         if not self.cp.has_section('window'):
             self.cp.add_section('window')
 
         # 设置窗口背景
-        self.background = self.get_or_set('background', '#c2e3eb')
+        self.background = self.get_or_set('window', 'background', '#c2e3eb')
         if self.background.startswith('#'):
             self.apply_bg_mode('color')
         else:
@@ -53,27 +35,66 @@ class Window:
 
         # 设置主题颜色
         try:
-            self.main_color_hex = self.get_or_set('main_color', '#dd10fa')
-            self.main_color = [int(self.main_color_hex[i:i+2], 16)
-                               for i in range(1, 7, 2)]
+            self.main_color_hex = self.get_or_set(
+                'window', 'main_color', '#dd10fa')
+            self.main_color = self.color2rgb(self.main_color_hex)
         except:
             self.main_color = (255, 255, 255)
-            self.cp.set('window', 'main_color', '#dd10fa')
+            self.set_and_save('window', 'main_color', '#dd10fa')
 
-        self.cp.write(open('config.ini', 'w', encoding='utf-8'))
+        # 设置提示颜色
+        try:
+            self.tip_color_hex = self.get_or_set(
+                'window', 'tip_color', '#0000ff')
+            self.tip_color = self.color2rgb(self.tip_color_hex)
+        except:
+            self.tip_color = (0, 0, 255)
+            self.set_and_save('window', 'main_color', '#0000ff')
 
-    def set_title(self, title: str = '') -> None:
-        if not title:
-            pygame.display.set_caption(WINDOW_TITLE)
+    """
+    配置文件相关部分
+    """
+
+    def get_or_set(self, section: str, option: str, default: str) -> str:
+        """
+        若设置项存在，获取该项的值，否则将该项设置为默认值并返回该值。
+        """
+        if self.cp.has_option(section, option):
+            return self.cp.get(section, option)
         else:
-            pygame.display.set_caption(title+' - '+WINDOW_TITLE)
-
-    def get_or_set(self, key: str, default: str) -> str:
-        if self.cp.has_option('window', key):
-            return self.cp.get('window', key)
-        else:
-            self.cp.set('window', key, default)
+            self.set_and_save(section, option, default)
             return default
+
+    def set_and_save(self, section: str, option: str, value: str) -> None:
+        """
+        修改设置并保存。
+        """
+        self.cp.set(section, option, value)
+        self.cp.write(open(CONFIG_FILE, 'w', encoding='utf-8'))
+
+    """
+    颜色相关部分
+    """
+
+    def ask_color(self, default: str = '#ffffff', title: str = '') -> str:
+        """
+        颜色选择对话框。
+        """
+        tk = tkinter.Tk()
+        tk.withdraw()
+        color = tkinter.colorchooser.askcolor(default, title=title)[1]
+        tk.destroy()
+        return color
+
+    def color2rgb(self, hex_color: str) -> tuple:
+        """
+        将 #xxxxxx 格式的十六进制颜色转换为 RGB 颜色。
+        """
+        return tuple(int(hex_color[i:i+2], 16) for i in range(1, 7, 2))
+
+    """
+    窗口样式设置部分
+    """
 
     def apply_bg_mode(self, mode: str) -> None:
         """
@@ -82,12 +103,11 @@ class Window:
         if mode == 'color':
             self.bg_mode = 'color'
             try:
-                self.bg_color = tuple(int(self.background[i:i+2], 16)
-                                      for i in range(1, 7, 2))
+                self.bg_color = self.color2rgb(self.background)
             except:
                 self.background = '#c2e3eb'
                 self.bg_color = (0, 0, 0)
-                self.cp.set('window', 'background', '#c2e3eb')
+                self.set_and_save('window', 'background', '#c2e3eb')
         elif mode == 'image':
             try:
                 self.bg_image = pygame.transform.scale(
@@ -96,11 +116,12 @@ class Window:
                 self.bg_color = (0, 0, 0)
                 self.bg_mode = 'image'
                 try:
-                    self.mask_alpha = int(self.get_or_set('mask_alpha', '200'))
+                    self.mask_alpha = int(self.get_or_set(
+                        'window', 'mask_alpha', '200'))
                     assert (0 <= self.mask_alpha <= 255)
                 except:
                     self.mask_alpha = 200
-                    self.cp.set('window', 'mask_alpha', '200')
+                    self.set_and_save('window', 'mask_alpha', '200')
                 mask = pygame.Surface(WINDOW_SIZE, pygame.SRCALPHA)
                 mask.fill((0, 0, 0, self.mask_alpha))
                 self.bg_image_with_mask.blit(mask, (0, 0))
@@ -108,30 +129,30 @@ class Window:
                 self.bg_mode = 'color'
                 self.background = '#c2e3eb'
                 self.bg_color = (0, 0, 0)
-                self.cp.set('window', 'background', '#c2e3eb')
+                self.set_and_save('window', 'background', '#c2e3eb')
+
+    def bg_config(self) -> None:
+        """
+        设置背景。
+        """
+        eval('self.set_bg_'+self.bg_mode)()
 
     def change_bg_mode(self) -> None:
         """
         切换背景模式。
         """
-        exec(f'self.set_bg_{"image" if self.bg_mode=="color" else "color"}()')
-
-    def set_bg(self) -> None:
-        """
-        修改背景。
-        """
-        exec(f'self.set_bg_{self.bg_mode}()')
+        eval('self.set_bg_'+{'image': 'color',
+             'color': 'image'}[self.bg_mode])()
 
     def set_bg_color(self) -> None:
         """
         设置背景颜色。
         """
-        color = askcolor(self.bg_color, '选择背景颜色')
+        color = self.ask_color(self.bg_color, '选择背景颜色')
         if color:
             self.background = color
             self.apply_bg_mode('color')
-            self.cp.set('window', 'background', color)
-            self.cp.write(open('config.ini', 'w', encoding='utf-8'))
+            self.set_and_save('window', 'background', color)
 
     def set_bg_image(self) -> None:
         """
@@ -143,35 +164,45 @@ class Window:
                 pygame.image.load(image)
                 self.background = image
                 self.apply_bg_mode('image')
-                self.cp.set('window', 'background', image)
-                self.cp.write(open('config.ini', 'w', encoding='utf-8'))
+                self.set_and_save('window', 'background', image)
             except:
-                self.error('无法加载所选的背景图片，请重新选择。')
+                easygui.exceptionbox('无法加载所选的背景图片，请重新选择。', '设置背景图片')
                 self.set_bg_image()
 
     def set_main_color(self) -> None:
         """
         设置主题颜色。
         """
-        color = askcolor(self.main_color_hex, '选择主题颜色')
+        color = self.ask_color(self.main_color_hex, '选择主题颜色')
         if color:
             self.main_color_hex = color
-            self.main_color = [int(color[i:i+2], 16)
-                               for i in range(1, 7, 2)]
-            self.cp.set('window', 'main_color', color)
-            self.cp.write(open('config.ini', 'w', encoding='utf-8'))
+            self.main_color = self.color2rgb(color)
+            self.set_and_save('window', 'main_color', color)
+
+    def set_tip_color(self) -> None:
+        """
+        设置提示颜色。
+        """
+        color = self.ask_color(self.tip_color_hex, '选择提示颜色')
+        if color:
+            self.tip_color_hex = color
+            self.tip_color = self.color2rgb(color)
+            self.set_and_save('window', 'tip_color', color)
 
     def set_mask_alpha(self, value: float) -> None:
         """
         设置蒙版不透明度（参数为小数）。
         """
         self.mask_alpha = int(value * 255)
-        self.cp.set('window', 'mask_alpha', str(self.mask_alpha))
-        self.cp.write(open('config.ini', 'w', encoding='utf-8'))
+        self.set_and_save('window', 'mask_alpha', str(self.mask_alpha))
         self.bg_image_with_mask = self.bg_image.copy()
         mask = pygame.Surface(WINDOW_SIZE, pygame.SRCALPHA)
         mask.fill((0, 0, 0, self.mask_alpha))
         self.bg_image_with_mask.blit(mask, (0, 0))
+
+    """
+    窗口绘制部分
+    """
 
     def draw_frame(self) -> None:
         """
@@ -182,27 +213,27 @@ class Window:
         elif self.bg_mode == 'image':
             self.screen.blit(self.bg_image_with_mask, (0, 0))
         pygame.draw.line(self.screen, self.main_color,
-                         (SIDEBAR_LEFT, 0), (SIDEBAR_LEFT, 600), 3)
+                         (SPLIT_LINE, 0), (SPLIT_LINE, 600), 3)
 
     def draw_text(self, text: str, pos: tuple, align: str = 'topleft', size: int = 1, font: int = 0, color: tuple = None) -> pygame.Rect:
         """
         绘制文字。
         """
-        render = self.fonts[font][size].render(
+        render = FONTS[font][size].render(
             text, True, color if color else self.main_color)
         rect = render.get_rect()
         exec(f'rect.{align}=pos')
         return self.screen.blit(render, rect)
 
-    def error(self, msg: str, serious: bool = False) -> None:
+    """
+    程序流程相关部分
+    """
+
+    def set_subtitle(self, title: str = '') -> None:
         """
-        错误弹窗。
+        修改窗口子标题。
         """
-        if serious:
-            easygui.msgbox(msg, '出错了', '退出')
-            self.exit()
-        else:
-            easygui.msgbox(msg, '提示', '知道了')
+        pygame.display.set_caption(title+bool(title)*' - '+WINDOW_TITLE)
 
     def process_events(self) -> list:
         """
@@ -219,9 +250,25 @@ class Window:
             elif event.type == pygame.MOUSEBUTTONUP:
                 ret.append(event)
             elif event.type == pygame.QUIT:
-                if easygui.ynbox('真的要退出程序吗？', '不要离开我啊 QwQ', ('拜拜啦', '继续陪你!')):
+                if easygui.ynbox('真的要退出程序吗？', '不要离开我啊 QwQ', ('退出', '手滑了')):
                     self.exit()
         return ret
+
+    def update(self) -> None:
+        """
+        刷新窗口。
+        """
+        pygame.display.flip()
+
+    def error(self, msg: str, serious: bool = False) -> None:
+        """
+        错误弹窗。
+        """
+        if serious:
+            easygui.msgbox(msg, '出错了', '退出')
+            self.exit()
+        else:
+            easygui.msgbox(msg, '提示', '知道了')
 
     def exit(self) -> None:
         """
@@ -231,15 +278,15 @@ class Window:
         pygame.quit()
         sys.exit()
 
-    def update(self) -> None:
-        """
-        刷新窗口。
-        """
-        pygame.display.flip()
-
 
 class Button:
-    def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=lambda: print('Ding dong~'), background: str = '', text: str = '', todo_with_arg: bool = False) -> None:
+    """
+    按钮类。
+    """
+
+    touch_time: float = 0  # 正值代表光标触碰按钮的时间，负值代表光标离开按钮的时间
+
+    def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', textalign: str = 'midright', btnalign: str = 'midleft', todo_with_arg: bool = False) -> None:
         self.window = window
         self.icon = icon
         self.align = align
@@ -247,12 +294,16 @@ class Button:
         self.todo = todo
         self.background = background
         self.text = text
-        self.todo_with_arg = todo_with_arg
+        self.text_align = textalign
+        self.button_align = btnalign
+        self.todo_with_arg = todo_with_arg  # 是否向 todo 函数传入 self 参数
         self.rect = self.icon.get_rect()
         exec(f'self.rect.{align}=pos')
-        self.touch_time = 0
 
-    def draw(self) -> pygame.Rect:
+    def show(self) -> pygame.Rect:
+        """
+        显示按钮。
+        """
         if self.touch_time <= 0 and self.rect.collidepoint(*self.window.mouse_pos):
             self.touch_time = time.time()
         elif self.touch_time > 0 and not self.rect.collidepoint(*self.window.mouse_pos):
@@ -271,23 +322,32 @@ class Button:
                                  pygame.Rect((0, 0), self.size), 0, 5)
             self.window.screen.blit(alpha_surface, self.rect)
         if self.text:
-            tip = self.window.fonts[0][0].render(
-                self.text, True, (0, 0, 255), self.window.main_color)
+            tip = FONTS[0][0].render(
+                self.text, True, self.window.tip_color, self.window.main_color)
             tip.set_alpha(alpha)
             rect = tip.get_rect()
-            rect.midright = self.rect.midleft
+            exec(f'rect.{self.text_align}=self.rect.{self.button_align}')
             self.window.screen.blit(tip, rect)
         return self.window.screen.blit(self.icon, self.rect)
 
     def move(self, pos: tuple) -> None:
+        """
+        移动按钮位置。
+        """
         self.rect = self.icon.get_rect()
         exec(f'self.rect.{self.align}=pos')
 
-    def change(self, icon: pygame.Surface) -> None:
+    def change_icon(self, icon: pygame.Surface) -> None:
+        """
+        更换按钮图标。
+        """
         self.icon = icon
         self.size = icon.get_size()
 
     def process_click_event(self, mouse_pos: tuple) -> None:
+        """
+        处理点击事件。
+        """
         if self.rect.collidepoint(*mouse_pos):
             if self.todo_with_arg:
                 self.todo(self)
@@ -296,65 +356,70 @@ class Button:
 
 
 class Slider:
-    def __init__(self, window: Window, pos: tuple, length: int, width: int, align: str = 'topleft', size: int = 30, getvalue=None, setvalue=None, setdirectly=None, sdtext='') -> None:
+    """
+    滑动条类。
+    """
+
+    click_pos: tuple = (0, 0)  # 点击滑块时的光标位置
+    touch_time: float = 0  # 见 Button 类说明
+
+    def __init__(self, window: Window, pos: tuple, length: int, width: int, align: str = 'topleft', get_value=None, set_value=None, set_directly=None, get_text=None) -> None:
         self.window = window
+        self.color = self.window.main_color
         self.pos = pos
         self.length = length
         self.width = width
         self.align = align
-        self.size = size
-        self.getvalue = getvalue
-        self.setvalue = setvalue
-        self.setdirectly = setdirectly
-        self.sdtext = sdtext
+        self.get_value = get_value
+        self.set_value = set_value
+        self.set_directly = set_directly
+        self.get_text = get_text
         self.setting = False
-        self.click_pos = (0, 0)
-        self.color = self.window.main_color
-        self.icon = pygame.transform.scale(pygame.image.load(
-            os.path.join(RESOURCES, 'icons', 'crystal.png')), (size, size))
-        self.warning = pygame.transform.scale(pygame.image.load(
-            os.path.join(RESOURCES, 'icons', 'warning.png')), (size, size))
-        self.icon_rect = self.icon.get_rect()
+        self.size = 20
+        self.icon_rect = ICONS['crystal'].get_rect()
         self.bar = pygame.Surface((length, width), pygame.SRCALPHA)
-        pygame.draw.rect(self.bar, self.color,
-                         pygame.Rect((0, 0), (length, width)), 0, width//2)
         self.bar_rect = self.bar.get_rect()
+        self.redraw_bar()
         exec(f'self.bar_rect.{self.align}=pos')
-        self.touch_time = 0
 
-    def draw(self) -> pygame.Rect:
+    def redraw_bar(self) -> None:
+        """
+        重绘滑动条。
+        """
+        pygame.draw.rect(self.bar, self.color, pygame.Rect(
+            (0, 0), (self.length, self.width)), 0, self.width//2)
+
+    def show(self) -> pygame.Rect:
+        """
+        显示滑动条。
+        """
         if self.color != self.window.main_color:
             self.color = self.window.main_color
-            self.bar = pygame.Surface(
-                (self.length, self.width), pygame.SRCALPHA)
-            pygame.draw.rect(self.bar, self.color,
-                             pygame.Rect((0, 0), (self.length, self.width)), 0, self.width//2)
-            self.bar_rect = self.bar.get_rect()
-            exec(f'self.bar_rect.{self.align}=self.pos')
+            self.redraw_bar()
         self.window.screen.blit(self.bar, self.bar_rect)
         if self.touch_time <= 0 and self.icon_rect.collidepoint(*self.window.mouse_pos):
             self.touch_time = time.time()
         elif self.touch_time > 0 and not self.icon_rect.collidepoint(*self.window.mouse_pos) and not self.setting:
             self.touch_time = -time.time()-min(0.5, abs(time.time()-self.touch_time))
         if self.setting:
-            if not 0 <= self.getvalue() <= 1:
-                self.setvalue(max(0, min(1, self.getvalue())))
+            if not 0 <= self.get_value() <= 1:
+                self.set_value(max(0, min(1, self.get_value())))
             elif self.window.mouse_pos != self.click_pos:
-                self.setvalue(max(0, min(1,
-                                         (self.window.mouse_pos[0]-self.bar_rect.left-self.size/2)/(self.length-self.size))))
+                self.set_value(max(0, min(1,
+                                          (self.window.mouse_pos[0]-self.bar_rect.left-self.size/2)/(self.length-self.size))))
         alpha = int((min(0.5, time.time()-self.touch_time) if self.touch_time
                     > 0 else max(0, -time.time()-self.touch_time))*510)
         alpha_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
         pygame.draw.circle(alpha_surface, (*self.window.main_color,
                            alpha), (self.size//2, self.size//2), self.size//2)
         self.icon_rect.midbottom = (
-            self.bar_rect.left+self.size/2+(self.length-self.size)*max(0, min(1, self.getvalue())), self.bar_rect.centery)
+            self.bar_rect.left+self.size/2+(self.length-self.size)*max(0, min(1, self.get_value())), self.bar_rect.centery)
         self.window.screen.blit(alpha_surface, self.icon_rect)
         self.window.screen.blit(
-            self.icon if 0 <= self.getvalue() <= 1 else self.warning, self.icon_rect)
-        if self.touch_time > 0 and self.setdirectly and (not pygame.mouse.get_pressed()[0] or self.window.mouse_pos == self.click_pos):
-            tip = self.window.fonts[0][0].render(
-                '点击以精确设置'+self.sdtext, True, (0, 0, 255), self.window.main_color)
+            ICONS['crystal' if 0 <= self.get_value() <= 1 else 'warning'], self.icon_rect)
+        if self.touch_time > 0 and self.get_text and (not pygame.mouse.get_pressed()[0] or self.window.mouse_pos == self.click_pos):
+            tip = FONTS[0][0].render(
+                self.get_text(), True, self.window.tip_color, self.window.main_color)
             tip.set_alpha(alpha)
             rect = tip.get_rect()
             rect.midright = self.icon_rect.midleft
@@ -362,16 +427,27 @@ class Slider:
         return self.bar_rect
 
     def move(self, pos: tuple) -> None:
+        """
+        移动滑动条位置。
+        """
         self.bar_rect = self.bar.get_rect()
         exec(f'self.bar_rect.{self.align}=pos')
 
     def process_click_event(self, mouse_pos: tuple) -> None:
+        """
+        处理点击事件。
+        """
         if self.icon_rect.collidepoint(*mouse_pos):
             self.setting = True
             self.click_pos = mouse_pos
+        elif self.bar_rect.collidepoint(*mouse_pos):
+            self.setting = True
 
     def process_release_event(self, mouse_pos: tuple) -> None:
+        """
+        处理鼠标释放事件。
+        """
         if self.setting:
             self.setting = False
-            if mouse_pos == self.click_pos and self.setdirectly:
-                self.setdirectly()
+            if mouse_pos == self.click_pos and self.set_directly:
+                self.set_directly()
