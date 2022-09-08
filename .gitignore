@@ -7,5 +7,4 @@ config.ini
 dist/
 Omegar
 Omegar.exe
-Pipfile
 temp.*
