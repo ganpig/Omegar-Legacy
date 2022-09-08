@@ -5,6 +5,7 @@ Autosave_*
 build/
 config.ini
 dist/
-Omegar*
+Omegar
+Omegar.exe
 Pipfile
 temp.*
