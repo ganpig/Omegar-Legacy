@@ -1,4 +1,7 @@
 # 第三方库列表
 
-- mutagen
-- pygame
+```plaintext
+easygui
+mutagen
+pygame
+```

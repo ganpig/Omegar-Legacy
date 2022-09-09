@@ -1,3 +1,4 @@
+import ctypes
 import os
 import sys
 
@@ -22,7 +23,7 @@ SPLIT_LINE = 600
 SLIDER_BUTTON_SIZE = 20
 
 # 配置文件名称
-CONFIG_FILE = 'config.ini'
+CONFIG_FILE = 'Omegar.ini'
 
 # 资源文件路径
 try:
@@ -31,11 +32,21 @@ except:
     RESOURCES = '.'
 
 
-def get_res(*args):
+def get_res(*args) -> str:
     """
     获取资源文件路径。
     """
     return os.path.join(RESOURCES, *args)
+
+
+def load_dll(name: str) -> ctypes.CDLL:
+    """
+    加载动态链接库。
+    """
+    if os.name == 'nt':
+        return ctypes.CDLL(get_res('dlls', name+'.dll'), winmode=0)
+    else:
+        return ctypes.cdll.LoadLibrary(get_res('dlls', name+'.so'))
 
 
 # 字体大小
@@ -84,7 +95,7 @@ PAGE_NAME = {
 
 
 """
-工程相关
+项目相关
 """
 
 # 采拍时拍子图标每秒钟行走的像素数
