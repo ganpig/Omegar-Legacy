@@ -1,9 +1,8 @@
 from ctypes import *
 
-def AutoCorrect(arr:list,precision:int,accuracy:int):
-	seq = c_double *len(arr)
-	carray=seq(list*)
-	return carray
 
 
-	
+listToArray = lambda li: (c_double*len(li))(*li)
+
+
+arrayToList = lambda array,length: [array[i] for i in range   (0, length)]
