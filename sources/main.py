@@ -19,12 +19,14 @@ from ui import *
 
 
 class App:
+    tmp_beats: dict = {}
     buttons: dict = {}  # 按钮
+    earliest_beat: float = 0
     later_buttons: dict = {}  # 延迟添加的按钮
     later_del_buttons: list = []  # 延迟删除的按钮
     sliders: dict = {}  # 滑动条
-    project_path: str = ''  # 工程文件路径
-    project_data: dict = {}  # 工程数据
+    project_path: str = ''  # 项目文件路径
+    project_data: dict = {}  # 项目数据
 
     def __init__(self) -> None:
         cp = configparser.ConfigParser()
@@ -34,7 +36,7 @@ class App:
             except:
                 pass
         self.window = Window(cp)
-        self.window.on_exit = self.save_and_return
+        self.window.on_exit = self.close_project
         self.player = Player()
         self.open('home')
 
@@ -51,7 +53,7 @@ class App:
         self.buttons = {}
         self.sliders = {}
         try:
-            eval('self.open_'+page)()
+            eval('self._open_'+page)()
         except:
             pass
 
@@ -62,29 +64,21 @@ class App:
         self.window.draw_frame()
         start = self.window.draw_text(PAGE_NAME[self.page], ((SPLIT_LINE+WINDOW_SIZE[0])//2, 10-max(
             0, 1-(time.time()-self.page_open_time)/0.3)**2*100), 'midtop', 3).bottom
-        eval('self.draw_'+self.page)(start)
+        eval('self._draw_'+self.page)(start)
         self.window.update()
+
+    def exit(self) -> None:
+        try:
+            eval('self._exit_'+self.page)()
+        except:
+            pass
 
     def return_home(self) -> None:
         """
-        关闭工程并返回首页。
+        关闭项目并返回首页。
         """
-        self.project_path = ''
-        self.project_data = {}
         self.open('home')
         self.player.close()
-
-    def save_and_return(self, type=0) -> None:
-        """
-        保存并关闭工程并返回首页。
-        """
-        if self.project_path:
-            if type == 1:
-                self.save_project(f'Autosave_{int(time.time())}.json')
-            if easygui.ynbox(f'是否保存工程文件为 {self.project_path}？', ['返回首页', '退出程序'][type], ('保存', '不保存')):
-                self.save_project()
-            if type == 0:
-                self.return_home()
 
     def process_events(self) -> None:
         """
@@ -149,15 +143,15 @@ class App:
         self.later_del_buttons.append(name)
 
     """
-    工程操作
+    项目操作
     """
 
     def create_project_wizard(self) -> None:
         """
-        创建工程向导。
+        创建项目向导。
         """
         try:
-            project_name = easygui.enterbox('请输入工程名称', '创建工程')
+            project_name = easygui.enterbox('请输入项目名称', '创建项目')
             if not project_name:
                 return
             music_path = easygui.fileopenbox(
@@ -165,7 +159,7 @@ class App:
             if not music_path:
                 return
             project_path = easygui.filesavebox(
-                '请先保存工程文件', WINDOW_TITLE, project_name+'.json', ['*.json'])
+                '请先保存项目文件', WINDOW_TITLE, project_name+'.json', ['*.json'])
             if not project_path:
                 return
             self.project_path = project_path
@@ -181,16 +175,16 @@ class App:
             }
             self.open('pick_beats')
         except:
-            easygui.exceptionbox('创建工程失败！', WINDOW_TITLE)
+            easygui.exceptionbox('创建项目失败！', WINDOW_TITLE)
             self.return_home()
 
     def open_project(self) -> None:
         """
-        打开工程。
+        打开项目。
         """
         try:
             project_path = easygui.fileopenbox(
-                '打开工程', WINDOW_TITLE, '*.json', ['*.json'])
+                '打开项目', WINDOW_TITLE, '*.json', ['*.json'])
             if not project_path:
                 return
             self.project_path = project_path
@@ -201,24 +195,38 @@ class App:
                 self.open('pick_beats')
 
         except:
-            easygui.exceptionbox('打开工程失败！', WINDOW_TITLE)
+            easygui.exceptionbox('打开项目失败！', WINDOW_TITLE)
             self.return_home()
 
     def save_project(self, path=None) -> None:
         """
-        保存工程。
+        保存项目。
         """
         json.dump(self.project_data, open(
-            path if path else self.project_path, 'w'))
+            path if path else self.project_path, 'w'), indent=4)
+
+    def close_project(self) -> None:
+        """
+        保存并关闭项目。
+        """
+        if self.project_path:
+            if not os.path.isdir('Autosave'):
+                os.makedirs('Autosave')
+            self.save_project(os.path.join(
+                'Autosave', f'{self.project_data["project_name"]}_{int(time.time())}.json'))
+            if easygui.ynbox(f'是否保存项目文件为 {self.project_path}？', '关闭项目', ('保存', '不保存')):
+                self.save_project()
+            self.project_path = ''
+            self.project_data = {}
 
     def export_project_wizard(self) -> None:
         """
-        导出工程向导。
+        导出项目向导。
         """
 
         def convert_chart(json_path: str, omgc_path: str) -> None:
             """
-            将 json 工程文件转换为 omgc 谱面文件。
+            将 json 项目文件转换为 omgc 谱面文件。
             参数：两个文件的 path。
             """
             project_data = json.load(open(json_path))  # 读取 json 数据
@@ -440,11 +448,11 @@ class App:
 
         try:
             ch = easygui.buttonbox(
-                '是否使用已有的生成设置？（首次使用请选择后者）', '导出工程', ('使用已有生成设置', '创建新的生成设置'))
+                '是否使用已有的生成设置？（首次使用请选择后者）', '导出项目', ('使用已有生成设置', '创建新的生成设置'))
             if ch == '使用已有生成设置':
                 using_pickle = True
                 pickle_path = easygui.fileopenbox(
-                    '请选择生成设置文件', '导出工程', '*.pickle', ['*.pickle'])
+                    '请选择生成设置文件', '导出项目', '*.pickle', ['*.pickle'])
                 if pickle_path:
                     name, composer, illustrator, music_path, illustration_path, charts_info = pickle.load(
                         open(pickle_path, 'rb'))  # 从 pickle 文件读取生成设置
@@ -455,22 +463,22 @@ class App:
                 data = ['']*3
                 while True:
                     data = easygui.multenterbox(
-                        '请输入歌曲信息：', '导出工程', ['曲名', '曲师', '画师'], data)
+                        '请输入歌曲信息：', '导出项目', ['曲名', '曲师', '画师'], data)
                     if not data:
                         return
                     if not all(data):
-                        easygui.msgbox('请将歌曲信息填写完整！', '导出工程', '哦~')
+                        easygui.msgbox('请将歌曲信息填写完整！', '导出项目', '哦~')
                     else:
                         name, composer, illustrator = data
                         break
 
                 music_path = easygui.fileopenbox(
-                    '请选择歌曲音频', '导出工程', '*.ogg', ['*.ogg'])
+                    '请选择歌曲音频', '导出项目', '*.ogg', ['*.ogg'])
                 if not music_path:
                     return
 
                 illustration_path = easygui.fileopenbox(
-                    '请选择曲绘图片', '导出工程', '*.png', ['*.png'])
+                    '请选择曲绘图片', '导出项目', '*.png', ['*.png'])
                 if not illustration_path:
                     return
 
@@ -479,23 +487,23 @@ class App:
                     if charts_info:  # 一张谱面都没添加时无法继续
                         if not easygui.ynbox(f'已添加 {len(charts_info)} 张谱面：\n'+'\n'.join(
                                 f'{i["difficulty"]} {i["diff_number"]} By {i["writer"]} ({i["json_path"]})'
-                                for i in charts_info), '导出工程', ('继续', '完成')):
+                                for i in charts_info), '导出项目', ('继续', '完成')):
                             break
 
                     data = ['']*3
                     while True:
                         data = easygui.multenterbox(
-                            f'请输入第 {len(charts_info)+1} 张谱面信息：', '导出工程', ['难度', '定数', '谱师'], data)
+                            f'请输入第 {len(charts_info)+1} 张谱面信息：', '导出项目', ['难度', '定数', '谱师'], data)
                         if not data:
                             return
                         if not all(data):
-                            easygui.msgbox('请将谱面信息填写完整！', '导出工程', '哦~')
+                            easygui.msgbox('请将谱面信息填写完整！', '导出项目', '哦~')
                         else:
                             difficulty, diff_number, writer = data
                             break
 
                     json_path = easygui.fileopenbox(
-                        '请选择谱面工程文件', '导出工程', '*.json', ['*.json'])
+                        '请选择谱面项目文件', '导出项目', '*.json', ['*.json'])
                     if not json_path:
                         if charts_info:
                             continue
@@ -510,56 +518,56 @@ class App:
             convert_charts(charts_info)
             info_path = make_info(name, composer, illustrator, charts_info)
 
-            if easygui.ynbox('请选择导出方式', '导出工程', ('打包为 OMGZ 文件', '导出到文件夹')):
+            if easygui.ynbox('请选择导出方式', '导出项目', ('打包为 OMGZ 文件', '导出到文件夹')):
                 ok = omgz_path = easygui.filesavebox(
-                    '保存 omgz 文件', '导出工程', name+'.omgz',  ['*.omgz'])
+                    '保存 omgz 文件', '导出项目', name+'.omgz',  ['*.omgz'])
                 if ok:
                     build_omgz(info_path, music_path,
                                illustration_path, charts_info, omgz_path)
             else:
-                easygui.msgbox('建议新建文件夹，否则选择的文件夹将被清空！', '导出工程', '哦~')
-                ok = folder_path = easygui.diropenbox('选择导出文件夹', '导出工程')
+                easygui.msgbox('建议新建文件夹，否则选择的文件夹将被清空！', '导出项目', '哦~')
+                ok = folder_path = easygui.diropenbox('选择导出文件夹', '导出项目')
                 if ok:
                     build_folder(info_path, music_path, illustration_path,
                                  charts_info, folder_path)
         except:
-            easygui.exceptionbox('导出失败了……www', '导出工程')
+            easygui.exceptionbox('导出失败了……www', '导出项目')
             return
 
-        easygui.msgbox('谱面导出成功！', '导出工程', '好耶')
+        easygui.msgbox('谱面导出成功！', '导出项目', '好耶')
 
         if not using_pickle:
-            if easygui.ynbox('是否保存生成设置以便以后导出同一工程使用？', '文件已导出' if ok else '文件未导出', ('保存', '不保存')):
+            if easygui.ynbox('是否保存生成设置以便以后导出同一项目使用？', '文件已导出' if ok else '文件未导出', ('保存', '不保存')):
                 pickle_path = easygui.filesavebox(
-                    '保存生成设置', '导出工程', name+'.pickle', ['*.pickle'])  # 将生成设置保存到 pickle 文件
+                    '保存生成设置', '导出项目', name+'.pickle', ['*.pickle'])  # 将生成设置保存到 pickle 文件
                 if pickle_path:
                     pickle.dump((name, composer, illustrator, music_path,
                                 illustration_path, charts_info), open(pickle_path, 'wb'))
-                    easygui.msgbox('生成设置保存成功!', '导出工程', '好耶')
+                    easygui.msgbox('生成设置保存成功!', '导出项目', '好耶')
 
     """
     首页
     """
 
-    def open_home(self) -> None:
+    def _open_home(self) -> None:
         self.window.set_subtitle()
 
-    def draw_home(self, start) -> None:
+    def _draw_home(self, start) -> None:
         self.show_button('settings', ICONS['settings'], (WINDOW_SIZE[0]-10, WINDOW_SIZE[1]-10),
                          'bottomright', lambda: self.open('settings'), 'circle', '设置')
 
         t = self.window.draw_text(
-            '创建工程', (SPLIT_LINE+10, start+20), 'topleft')
+            '创建项目', (SPLIT_LINE+10, start+20), 'topleft')
         self.show_button('new', ICONS['go'], (WINDOW_SIZE[0]-10,
                                               t.centery), 'midright', self.create_project_wizard, 'circle', '进入')
 
         t = self.window.draw_text(
-            '打开工程', (SPLIT_LINE+10, t.bottom+10), 'topleft')
+            '打开项目', (SPLIT_LINE+10, t.bottom+10), 'topleft')
         self.show_button('open', ICONS['go'], (WINDOW_SIZE[0]-10,
                                                t.centery), 'midright', self.open_project, 'circle', '进入')
 
         t = self.window.draw_text(
-            '导出工程', (SPLIT_LINE+10, t.bottom+10), 'topleft')
+            '导出项目', (SPLIT_LINE+10, t.bottom+10), 'topleft')
         self.show_button('export', ICONS['go'], (WINDOW_SIZE[0]-10,
                                                  t.centery), 'midright', self.export_project_wizard, 'circle', '进入')
 
@@ -567,13 +575,15 @@ class App:
     采拍页面
     """
 
-    def open_pick_beats(self) -> None:
+    def _open_pick_beats(self) -> None:
         self.player.open(self.project_data['music_path'])
         self.window.set_subtitle(self.project_path)
+        self.earliest_beat = math.inf
+        self.tmp_beats = {}  # key 为时间，value 为 True 表示强拍，False 表示弱拍
 
-    def draw_pick_beats(self, start) -> None:
+    def _draw_pick_beats(self, start) -> None:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',
-                         self.save_and_return, 'circle', '返回', 'midleft', 'midright')
+                         self.exit, 'circle', '返回', 'midleft', 'midright')
 
         def play_or_pause(button: Button) -> None:
             if self.player.get_playing():
@@ -585,42 +595,31 @@ class App:
         t1 = self.show_button(
             'play_or_pause', ICONS['pause' if self.player.get_playing() else 'play'], (10, 0), 'topleft', play_or_pause, 'rect', '播放/暂停', 'midleft', 'midright', True)
 
-        def del_strong_beat(sec: float) -> None:
-            for i in range(len(self.project_data['beats'])):
-                if self.project_data['beats'][i][0] == sec:
-                    for j in self.project_data['beats'][i]:
-                        self.later_del_button(j)
-                    del self.project_data['beats'][i]
-                    break
+        def process_beat() -> None:
+            tmp = []
+            sorted_beats = sorted(self.tmp_beats)
+            self.earliest_beat = sorted_beats[0]
+            for i in sorted_beats:
+                if self.tmp_beats[i]:
+                    tmp.append([i])
+                else:
+                    tmp[-1].append(i)
+            self.project_data['beats'] = tmp
 
-        def del_normal_beat(sec: float) -> None:
-            for i in range(len(self.project_data['beats'])):
-                if self.project_data['beats'][i][0] > sec:
-                    break
-            for j in range(len(self.project_data['beats'][i-1])):
-                if self.project_data['beats'][i-1][j] == sec:
-                    del self.project_data['beats'][i-1][j]
+        def delete_beat(sec: float) -> None:
+            del self.tmp_beats[sec]
             self.later_del_button(sec)
 
-        def add_strong_beat(sec: float = -1) -> None:
-            if sec == -1:
-                sec = self.player.get_pos()
-            self.project_data['beats'].append([sec])
-            self.later_add_button(sec, ICONS['orange_beat'], (
-                0, 0), 'center', lambda: del_strong_beat(sec), 'circle', '删除小节', 'midtop', 'midbottom')
+        def add_beat(sec: float, strong: bool) -> None:
+            if sec < self.earliest_beat:
+                self.earliest_beat = sec
+                strong = True
+            self.tmp_beats[sec] = strong
+            self.later_add_button(sec, ICONS['orange_beat' if strong else 'green_beat'], (0, 0), 'center', lambda: self.player.set_pos(
+                sec), 'circle', '左击定位到此，右击删除拍子', 'midtop', 'midbottom', todo_right=lambda: delete_beat(sec))
 
-        def add_normal_beat(sec: float = -1) -> None:
-            if sec == -1:
-                sec = self.player.get_pos()
-            if not self.project_data['beats']:
-                add_strong_beat(sec)
-            else:
-                self.project_data['beats'][-1].append(sec)
-                self.later_add_button(sec, ICONS['green_beat'], (
-                    0, 0), 'center', lambda: del_normal_beat(sec), 'circle', '删除拍子', 'midtop', 'midbottom')
-
-        t2 = self.show_button('add_beat', ICONS['add'], (SPLIT_LINE-10, 10), 'topright',
-                              add_normal_beat, 'rect', '左击添加弱拍，右击添加强拍', todo_right=add_strong_beat)
+        t2 = self.show_button('add_beat', ICONS['add'], (SPLIT_LINE-10, 10), 'topright', lambda: add_beat(self.player.get_pos(
+        ), False), 'rect', '左击添加弱拍，右击添加强拍'if self.player.get_pos() > self.earliest_beat else '添加强拍', todo_right=lambda: add_beat(self.player.get_pos(), True))
 
         def set_player_pos() -> None:
             pos = easygui.enterbox('请输入定位秒数', '控制播放进度')
@@ -642,25 +641,35 @@ class App:
                 if 0 < self.buttons[sec].rect.right < SPLIT_LINE:
                     self.buttons[sec].show()
 
+    def _exit_pick_beats(self) -> None:
+        self.player.close()
+        self.close_project()
+        self.open('home')
+
     """
     谱面编辑页面
     """
 
-    def open_edit(self) -> None:
+    def _open_edit(self) -> None:
         self.window.set_subtitle(self.project_path)
 
-    def draw_edit(self, start) -> None:
+    def _draw_edit(self, start) -> None:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',
-                         self.save_and_return, 'circle', '返回', 'midleft', 'midright')
+                         self.exit, 'circle', '返回', 'midleft', 'midright')
         self.window.set_subtitle(self.project_path)
+
+    def _exit_edit(self) -> None:
+        self.player.close()
+        self.close_project()
+        self.open('home')
 
     """
     设置页面
     """
 
-    def draw_settings(self, start) -> None:
+    def _draw_settings(self, start) -> None:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',
-                         lambda: self.open('home'), 'circle', '返回', 'midleft', 'midright')
+                         self.exit, 'circle', '返回', 'midleft', 'midright')
 
         t = self.window.draw_text('背景模式:'+('纯色' if self.window.bg_mode ==
                                            'color' else '图片'), (SPLIT_LINE+10, start+20), 'topleft')
@@ -692,6 +701,10 @@ class App:
         draw_color(self.window.tip_color, (t.right+5, t.centery-10, 20, 20))
         self.show_button('set_tip_color', ICONS['set'], (
             WINDOW_SIZE[0]-10, t.centery), 'midright', self.window.set_tip_color, 'rect')
+
+    def _exit_settings(self) -> None:
+        self.save_and_close()
+        self.open('home')
 
 
 if __name__ == '__main__':

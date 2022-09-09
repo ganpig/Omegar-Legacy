@@ -1,10 +1,10 @@
 __pycache__/
 .DS_Store
 .vscode
-Autosave_*
+Autosave/
 build/
-config.ini
 dist/
 Omegar
 Omegar.exe
+Omegar.ini
 temp.*

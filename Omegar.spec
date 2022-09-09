@@ -5,10 +5,10 @@ block_cipher = None
 
 
 a = Analysis(
-    ['main.py'],
+    ['sources/main.py'],
     pathex=[],
     binaries=[],
-    datas=[('fonts', 'fonts'), ('icons', 'icons')],
+    datas=[('fonts', 'fonts'), ('icons', 'icons'), ('dlls', 'dlls')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
