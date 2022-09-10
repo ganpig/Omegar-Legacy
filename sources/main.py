@@ -120,13 +120,13 @@ class App:
     UI 操作
     """
 
-    def show_button(self, name: str, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', text_align: str = 'midright', button_align: str = 'midleft', todo_with_arg: bool = False, todo_right=None) -> None:
+    def show_button(self, name: str, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', text_align: str = 'midright', button_align: str = 'midleft', todo_right=None) -> None:
         """
         添加或更新并显示按钮。
         """
         if name not in self.buttons:
             self.buttons[name] = Button(
-                self.window, icon, pos, align, todo, background, text, text_align, button_align, todo_with_arg, todo_right)
+                self.window, icon, pos, align, todo, background, text, text_align, button_align, todo_right)
         elif icon != self.buttons[name].icon:
             self.buttons[name].change_icon(icon)
         elif text != self.buttons[name].text:
@@ -135,7 +135,7 @@ class App:
             self.buttons[name].move(pos)
         return self.buttons[name].show()
 
-    def show_slider(self, name: str, pos: tuple, length: int, width: int = 10, align: str = 'topleft', get_value=None, set_value=None, set_directly=None, get_text=None, text_align: str = 'midright', button_align: str = 'midleft',) -> None:
+    def show_slider(self, name: str, pos: tuple, length: int, width: int = 10, align: str = 'topleft', get_value=None, set_value=None, set_directly=None, get_text=None, text_align: str = 'midright', button_align: str = 'midleft') -> None:
         """
         添加或更新并显示滑动条。
         """
@@ -146,12 +146,12 @@ class App:
             self.sliders[name].move(pos)
         return self.sliders[name].show()
 
-    def later_add_button(self, name: str, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', text_align: str = 'midright', button_align: str = 'midleft', todo_with_arg: bool = False, todo_right=None) -> None:
+    def later_add_button(self, name: str, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', text_align: str = 'midright', button_align: str = 'midleft', todo_right=None) -> None:
         """
         延迟添加按钮。
         """
         self.later_buttons[name] = Button(self.window, icon, pos, align, todo,
-                                          background, text, text_align, button_align, todo_with_arg, todo_right)
+                                          background, text, text_align, button_align, todo_right)
 
     def later_del_button(self, name: str) -> None:
         """
@@ -375,61 +375,30 @@ class App:
         self.window.set_subtitle(self.project_data['project_name'])
         self.earliest_beat = math.inf
         self.tmp_beats = {}  # key 为时间，value 为 True 表示强拍，False 表示弱拍
+        for bar in self.project_data['beats']:
+            for i, time in enumerate(bar):
+                self._add_beat(time, not i, False)
+
+        self.shortcuts[0][pygame.K_ESCAPE] = self.exit
+        self.shortcuts[0][pygame.K_SPACE] = self._play_or_pause
+        self.shortcuts[0][pygame.K_LEFT] = lambda: self.player.set_pos(
+            self.player.get_pos()-1)
+        self.shortcuts[0][pygame.K_RIGHT] = lambda: self.player.set_pos(
+            self.player.get_pos()+1)
+        self.shortcuts[0][pygame.K_DOWN] = lambda: self._add_beat(
+            self.player.get_pos(), False)
+        self.shortcuts[0][pygame.K_UP] = lambda: self._add_beat(
+            self.player.get_pos(), True)
 
     def _draw_pick_beats(self, start) -> None:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',
                          self.exit, 'circle', '返回', 'midleft', 'midright')
 
-        def play_or_pause(button: Button) -> None:
-            if self.player.get_playing():
-                self.player.pause()
-                button.change_icon(ICONS['play'])
-            else:
-                self.player.play()
-                button.change_icon(ICONS['pause'])
         t1 = self.show_button(
-            'play_or_pause', ICONS['pause' if self.player.get_playing() else 'play'], (10, 10), 'topleft', play_or_pause, 'rect', '播放/暂停', 'midleft', 'midright', True)
+            'play_or_pause', ICONS['pause' if self.player.get_playing() else 'play'], (10, 10), 'topleft', self._play_or_pause, 'rect', '播放/暂停', 'midleft', 'midright', True)
 
-        self.shortcuts[0][pygame.K_SPACE] = lambda: play_or_pause(
-            self.buttons['play_or_pause'])
-        self.shortcuts[0][pygame.K_LEFT] = lambda: self.player.set_pos(
-            self.player.get_pos()-1)
-        self.shortcuts[0][pygame.K_RIGHT] = lambda: self.player.set_pos(
-            self.player.get_pos()+1)
-
-        def process_beat() -> None:
-            tmp = []
-            sorted_beats = sorted(self.tmp_beats)
-            self.earliest_beat = sorted_beats[0]
-            self.tmp_beats[self.earliest_beat] = True
-            for i in sorted_beats:
-                if self.tmp_beats[i]:
-                    tmp.append([i])
-                else:
-                    tmp[-1].append(i)
-            self.project_data['beats'] = tmp
-
-        def delete_beat(sec: float) -> None:
-            del self.tmp_beats[sec]
-            self.later_del_button(sec)
-            process_beat()
-
-        def add_beat(sec: float, strong: bool) -> None:
-            if sec < self.earliest_beat:
-                self.earliest_beat = sec
-                strong = True
-            self.tmp_beats[sec] = strong
-            self.later_add_button(sec, ICONS['orange_beat' if strong else 'green_beat'], (0, 0), 'center', lambda: self.player.set_pos(
-                sec), 'circle', '左击定位到此，右击删除拍子', 'midtop', 'midbottom', todo_right=lambda: delete_beat(sec))
-            process_beat()
-
-        t2 = self.show_button('add_beat', ICONS['add'], (SPLIT_LINE-10, 10), 'topright', lambda: add_beat(self.player.get_pos(
-        ), False), 'rect', '左击或按↓添加弱拍，右击或按↑添加强拍' if self.player.get_pos() > self.earliest_beat else '单击或按↑添加强拍', todo_right=lambda: add_beat(self.player.get_pos(), True))
-
-        self.shortcuts[0][pygame.K_DOWN] = lambda: add_beat(
-            self.player.get_pos(), False)
-        self.shortcuts[0][pygame.K_UP] = lambda: add_beat(
-            self.player.get_pos(), True)
+        t2 = self.show_button('add_beat', ICONS['add'], (SPLIT_LINE-10, 10), 'topright', lambda: self._add_beat(self.player.get_pos(
+        ), False), 'rect', '左击或按↓添加弱拍，右击或按↑添加强拍' if self.player.get_pos() > self.earliest_beat else '单击或按↑添加强拍', todo_right=lambda: self._add_beat(self.player.get_pos(), True))
 
         def set_player_pos() -> None:
             pos = easygui.enterbox('请输入定位秒数', '控制播放进度')
@@ -451,6 +420,41 @@ class App:
                 if 0 < self.buttons[sec].rect.right < SPLIT_LINE:
                     self.buttons[sec].show()
 
+    def _play_or_pause(self) -> None:
+        if self.player.get_playing():
+            self.player.pause()
+            self.buttons['play_or_pause'].change_icon(ICONS['play'])
+        else:
+            self.player.play()
+            self.buttons['play_or_pause'].change_icon(ICONS['pause'])
+
+    def _add_beat(self, sec: float, strong: bool, process: bool = True) -> None:
+        if sec < self.earliest_beat:
+            self.earliest_beat = sec
+            strong = True
+        self.tmp_beats[sec] = strong
+        self.later_add_button(sec, ICONS['orange_beat' if strong else 'green_beat'], (0, 0), 'center', lambda: self.player.set_pos(
+            sec), 'circle', '左击定位到此，右击删除拍子', 'midtop', 'midbottom', lambda: self._delete_beat(sec))
+        if process:
+            self._process_beats()
+
+    def _delete_beat(self, sec: float) -> None:
+        del self.tmp_beats[sec]
+        self.later_del_button(sec)
+        self._process_beats()
+
+    def _process_beats(self) -> None:
+        tmp = []
+        sorted_beats = sorted(self.tmp_beats)
+        self.earliest_beat = sorted_beats[0]
+        self.tmp_beats[self.earliest_beat] = True
+        for i in sorted_beats:
+            if self.tmp_beats[i]:
+                tmp.append([i])
+            else:
+                tmp[-1].append(i)
+        self.project_data['beats'] = tmp
+
     def _exit_pick_beats(self) -> None:
         self.player.close()
         self.close_project()
@@ -462,6 +466,7 @@ class App:
 
     def _open_edit(self) -> None:
         self.window.set_subtitle(self.project_path)
+        self.shortcuts[0][pygame.K_ESCAPE] = self.exit
 
     def _draw_edit(self, start) -> None:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',
@@ -476,6 +481,9 @@ class App:
     """
     设置页面
     """
+
+    def _open_settings(self) -> None:
+        self.shortcuts[0][pygame.K_ESCAPE] = self.exit
 
     def _draw_settings(self, start) -> None:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',
@@ -513,7 +521,6 @@ class App:
             WINDOW_SIZE[0]-10, t.centery), 'midright', self.window.set_tip_color, 'rect')
 
     def _exit_settings(self) -> None:
-        self.save_and_close()
         self.open('home')
 
 

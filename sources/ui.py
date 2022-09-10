@@ -285,7 +285,7 @@ class Window:
 class Button:
     touch_time: float = 0  # 正值代表光标触碰按钮的时间，负值代表光标离开按钮的时间
 
-    def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', text_align: str = 'midright', button_align: str = 'midleft', todo_with_arg: bool = False, todo_right=None) -> None:
+    def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', text_align: str = 'midright', button_align: str = 'midleft', todo_right=None) -> None:
         self.window = window
         self.icon = icon
         self.align = align
@@ -295,7 +295,6 @@ class Button:
         self.text = text
         self.text_align = text_align
         self.button_align = button_align
-        self.todo_with_arg = todo_with_arg  # 是否向 todo 函数传入 self 参数
         self.todo_right = todo_right
         self.rect = self.icon.get_rect()
         exec(f'self.rect.{align}=pos')
@@ -349,11 +348,10 @@ class Button:
         处理点击事件。
         """
         if self.rect.collidepoint(*mouse_pos):
-            args = (self,)*self.todo_with_arg
             if button == pygame.BUTTON_LEFT:
-                self.todo(*args)
+                self.todo()
             elif button == pygame.BUTTON_RIGHT and self.todo_right:
-                self.todo_right(*args)
+                self.todo_right()
 
 
 class Slider:
