@@ -256,21 +256,19 @@ class App:
             self.project_path = ''
             self.project_data.clear()
 
-    def recent_project(self) -> None:
+    def view_recent_projects(self) -> None:
         """
         查看最近的项目。
         """
-        recent_projects = self.window.get_options('recent')
+        recent_projects = sorted(self.recent_projects, key=lambda x: self.recent_projects[x], reverse=True)
         if not recent_projects:
             self.window.set_msg('无最近项目！')
         else:
-            path = easygui.choicebox('请选择要打开的项目', '最近项目', sorted(
-                recent_projects, key=lambda x: self.window.get_or_set('recent', x), reverse=True)+['清除项目打开记录'])
+            path = easygui.choicebox('请选择要打开的项目', '最近项目', ['清除项目打开记录']+recent_projects)
             if not path:
                 return
             elif path == '清除项目打开记录':
-                self.window.cp.remove_section('recent')
-                self.window.set_msg('清除成功！')
+                self.recent_projects.clear()
             else:
                 self.open_project(path)
 
@@ -386,7 +384,7 @@ class App:
 
         self.shortcuts[CTRL][pygame.K_n] = self.create_project
         self.shortcuts[CTRL][pygame.K_o] = self.open_project
-        self.shortcuts[CTRL][pygame.K_h] = self.recent_project
+        self.shortcuts[CTRL][pygame.K_h] = self.view_recent_projects
         self.shortcuts[CTRL][pygame.K_e] = self.export_project
 
     def _draw_home(self, start) -> None:
@@ -410,12 +408,22 @@ class App:
         t = self.window.draw_text(
             '最近项目 (Ctrl+H)', (SPLIT_LINE+10, t.bottom+10), 'topleft')
         self.show_button('recent', ICONS['go'], (WINDOW_SIZE[0]-10,
-                                                 t.centery), 'midright', self.recent_project, 'circle')
+                                                 t.centery), 'midright', self.view_recent_projects, 'circle')
 
         t = self.window.draw_text(
             '导出项目 (Ctrl+E)', (SPLIT_LINE+10, t.bottom+10), 'topleft')
         self.show_button('export', ICONS['go'], (WINDOW_SIZE[0]-10,
                                                  t.centery), 'midright', self.export_project, 'circle')
+        
+        # t = self.window.draw_text(
+        #     '添加快捷键', (SPLIT_LINE+10, t.bottom+10), 'topleft')
+        # self.show_button('export', ICONS['go'], (WINDOW_SIZE[0]-10,
+        #                                          t.centery), 'midright', self.export_project, 'circle')
+        
+        # t = self.window.draw_text(
+        #     '添加按钮', (SPLIT_LINE+10, t.bottom+10), 'topleft')
+        # self.show_button('export', ICONS['go'], (WINDOW_SIZE[0]-10,
+        #                                          t.centery), 'midright', self.export_project, 'circle')
 
     """
     采拍页面
