@@ -58,10 +58,7 @@ class App:
         self.buttons = {}
         self.sliders = {}
         self.shortcuts = [{}, {}, {}, {}]
-        try:
-            eval('self._open_'+page)()
-        except:
-            pass
+        eval('self._open_'+page)()
 
     def draw(self) -> None:
         """
@@ -71,6 +68,7 @@ class App:
         start = self.window.draw_text(PAGE_NAME[self.page], ((SPLIT_LINE+WINDOW_SIZE[0])//2, 10-max(
             0, 1-(time.time()-self.page_open_time)/0.3)**2*100), 'midtop', 3).bottom
         eval('self._draw_'+self.page)(start)
+        self.window.draw_msg()
         self.window.update()
 
     def exit(self) -> None:
@@ -111,10 +109,10 @@ class App:
             elif event.type == pygame.USEREVENT:
                 self.player.replay()
         self.buttons.update(self.later_buttons)
-        self.later_buttons = {}
+        self.later_buttons.clear()
         for i in self.later_del_buttons:
             del self.buttons[i]
-        self.later_del_buttons = []
+        self.later_del_buttons.clear()
 
     """
     UI 操作
@@ -150,6 +148,8 @@ class App:
         """
         延迟添加按钮。
         """
+        if name in self.later_del_buttons:
+            self.later_del_buttons.remove(name)
         self.later_buttons[name] = Button(self.window, icon, pos, align, todo,
                                           background, text, text_align, button_align, todo_right)
 
@@ -176,7 +176,7 @@ class App:
             if not music_path:
                 return
             project_path = easygui.filesavebox(
-                '请先保存项目文件', WINDOW_TITLE, project_name+'.json', ['*.json'])
+                '请先保存项目文件', WINDOW_TITLE, validate_filename(project_name+'.json'), ['*.json'])
             if not project_path:
                 return
             self.project_path = project_path
@@ -192,36 +192,44 @@ class App:
                 }
             }
             self.open('pick_beats')
+            self.window.set_and_save(
+                'recent', project_path, str(int(time.time())))
         except:
             easygui.exceptionbox('创建项目失败！', WINDOW_TITLE)
             self.return_home()
 
-    def open_project(self) -> None:
+    def open_project(self, path: str = None) -> None:
         """
         打开项目。
         """
         try:
-            project_path = easygui.fileopenbox(
-                '打开项目', WINDOW_TITLE, '*.json', ['*.json'])
-            if not project_path:
-                return
-            self.project_path = project_path
-            self.project_data = json.load(open(project_path))
+            if not path:
+                path = easygui.fileopenbox(
+                    '打开项目', WINDOW_TITLE, '*.json', ['*.json'])
+                if not path:
+                    return
+            self.project_path = path
+            self.project_data = json.load(open(path))
             while not os.path.isfile(self.project_data['music_path']):
                 self.project_data['music_path'] = easygui.fileopenbox(
                     '歌曲音频文件无效，请重新选择', WINDOW_TITLE, '*.mp3', ['*.mp3'])
+            self.window.set_and_save(
+                'recent', path, str(int(time.time())))
             self.open(self.project_data['page'])
 
         except:
             easygui.exceptionbox('打开项目失败！', WINDOW_TITLE)
             self.return_home()
 
-    def save_project(self, path) -> None:
+    def save_project(self, path=None) -> None:
         """
         保存项目。
         """
         self.project_data['page'] = self.page
-        json.dump(self.project_data, open(path, 'w'), indent=4)
+        json.dump(self.project_data, open(
+            path if path else self.project_path, 'w'), indent=4)
+        if not path:
+            self.window.set_msg('保存成功！')
 
     def close_project(self) -> None:
         """
@@ -230,12 +238,31 @@ class App:
         if self.project_path:
             if not os.path.isdir('Autosave'):
                 os.makedirs('Autosave')
+
             self.save_project(os.path.join(
-                'Autosave', f'{self.project_data["project_name"]}_{int(time.time())}.json'))
+                'Autosave', validate_filename(f'{self.project_data["project_name"]}_{int(time.time())}.json')))
             if easygui.ynbox(f'是否保存项目文件为 {self.project_path}？', '关闭项目', ('保存', '不保存')):
-                self.save_project(self.project_path)
+                self.save_project()
             self.project_path = ''
-            self.project_data = {}
+            self.project_data.clear()
+
+    def recent_project(self) -> None:
+        """
+        查看最近的项目。
+        """
+        recent_projects = self.window.get_options('recent')
+        if not recent_projects:
+            self.window.set_msg('无最近项目！')
+        else:
+            path = easygui.choicebox('请选择要打开的项目', '最近项目', sorted(
+                recent_projects, key=lambda x: self.window.get_or_set('recent', x), reverse=True)+['清除项目打开记录'])
+            if not path:
+                return
+            elif path == '清除项目打开记录':
+                self.window.cp.remove_section('recent')
+                self.window.set_msg('清除成功！')
+            else:
+                self.open_project(path)
 
     def export_project(self) -> None:
         """
@@ -347,24 +374,34 @@ class App:
     def _open_home(self) -> None:
         self.window.set_subtitle()
 
+        self.shortcuts[CTRL][pygame.K_n] = self.create_project
+        self.shortcuts[CTRL][pygame.K_o] = self.open_project
+        self.shortcuts[CTRL][pygame.K_h] = self.recent_project
+        self.shortcuts[CTRL][pygame.K_e] = self.export_project
+
     def _draw_home(self, start) -> None:
         self.show_button('settings', ICONS['settings'], (WINDOW_SIZE[0]-10, WINDOW_SIZE[1]-10),
                          'bottomright', lambda: self.open('settings'), 'circle', '设置')
 
         t = self.window.draw_text(
-            '创建项目', (SPLIT_LINE+10, start+20), 'topleft')
+            '创建项目 (Ctrl+N)', (SPLIT_LINE+10, start+20), 'topleft')
         self.show_button('new', ICONS['go'], (WINDOW_SIZE[0]-10,
-                                              t.centery), 'midright', self.create_project, 'circle', '进入')
+                                              t.centery), 'midright', self.create_project, 'circle')
 
         t = self.window.draw_text(
-            '打开项目', (SPLIT_LINE+10, t.bottom+10), 'topleft')
+            '打开项目 (Ctrl+O)', (SPLIT_LINE+10, t.bottom+10), 'topleft')
         self.show_button('open', ICONS['go'], (WINDOW_SIZE[0]-10,
-                                               t.centery), 'midright', self.open_project, 'circle', '进入')
+                                               t.centery), 'midright', self.open_project, 'circle')
 
         t = self.window.draw_text(
-            '导出项目', (SPLIT_LINE+10, t.bottom+10), 'topleft')
+            '最近项目 (Ctrl+H)', (SPLIT_LINE+10, t.bottom+10), 'topleft')
+        self.show_button('recent', ICONS['go'], (WINDOW_SIZE[0]-10,
+                                                 t.centery), 'midright', self.recent_project, 'circle')
+
+        t = self.window.draw_text(
+            '导出项目 (Ctrl+E)', (SPLIT_LINE+10, t.bottom+10), 'topleft')
         self.show_button('export', ICONS['go'], (WINDOW_SIZE[0]-10,
-                                                 t.centery), 'midright', self.export_project, 'circle', '进入')
+                                                 t.centery), 'midright', self.export_project, 'circle')
 
     """
     采拍页面
@@ -374,7 +411,7 @@ class App:
         self.player.open(self.project_data['music_path'])
         self.window.set_subtitle(self.project_data['project_name'])
         self.earliest_beat = math.inf
-        self.tmp_beats = {}  # key 为时间，value 为 True 表示强拍，False 表示弱拍
+        self.tmp_beats.clear()  # key 为时间，value 为 True 表示强拍，False 表示弱拍
         for bar in self.project_data['beats']:
             for i, time in enumerate(bar):
                 self._add_beat(time, not i, False)
@@ -389,6 +426,7 @@ class App:
             self.player.get_pos(), False)
         self.shortcuts[0][pygame.K_UP] = lambda: self._add_beat(
             self.player.get_pos(), True)
+        self.shortcuts[CTRL][pygame.K_s] = self.save_project
 
     def _draw_pick_beats(self, start) -> None:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',
@@ -420,6 +458,10 @@ class App:
                 if 0 < self.buttons[sec].rect.right < SPLIT_LINE:
                     self.buttons[sec].show()
 
+        t = self.window.draw_text('自动修正', (SPLIT_LINE+10, start+20), 'topleft')
+        self.show_button('auto_correct', ICONS['go'], (
+            WINDOW_SIZE[0]-10, t.centery), 'midright', self._auto_correct_beats, 'circle')
+
     def _play_or_pause(self) -> None:
         if self.player.get_playing():
             self.player.pause()
@@ -438,10 +480,11 @@ class App:
         if process:
             self._process_beats()
 
-    def _delete_beat(self, sec: float) -> None:
+    def _delete_beat(self, sec: float, process: bool = True) -> None:
         del self.tmp_beats[sec]
         self.later_del_button(sec)
-        self._process_beats()
+        if process:
+            self._process_beats()
 
     def _process_beats(self) -> None:
         tmp = []
@@ -454,6 +497,22 @@ class App:
             else:
                 tmp[-1].append(i)
         self.project_data['beats'] = tmp
+
+    def _auto_correct_beats(self) -> None:
+        bak_beats = dict(self.tmp_beats)
+        time_points = sorted(bak_beats)
+        for time in time_points:
+            self._delete_beat(time, False)
+        time_points_arr = (ctypes.c_double*len(time_points))(*time_points)
+        dll = load_dll('autoCorrect')
+        dll.autoCorrect.argtypes = (
+            ctypes.c_int, ctypes.Array, ctypes.c_double)
+        dll.autoCorrect(len(time_points),
+                        time_points_arr, AUTO_CORRECT_MAX_VARIANCE)
+        for i, time in enumerate(list(time_points_arr)):
+            self._add_beat(time, bak_beats[time_points[i]], False)
+        self._process_beats()
+        self.window.set_msg('自动修正完成！')
 
     def _exit_pick_beats(self) -> None:
         self.player.close()

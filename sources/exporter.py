@@ -2,6 +2,7 @@ import hashlib
 import json
 import math
 import shutil
+from sqlite3 import InternalError
 import struct
 import tempfile
 import zipfile
@@ -40,11 +41,13 @@ def convert_chart(json_path: str, omgc_path: str) -> None:
             next_beat = math.ceil(beat)
             return beats[last_beat]*(next_beat-beat)+beats[next_beat]*(beat-last_beat)
 
-    def process_changes(initial_val: int, changes: list) -> dict:
+    def process_changes(initial_val: int, changes: list, include_first: bool = False) -> dict:
         """
         处理缓动。
         """
         changes_processed = {}
+        if include_first:
+            changes_processed[0] = (LINEAR_SLOW_MOVING, 0, initial_val)
         cur_val = initial_val
         for change in changes:
             t_0 = beat2sec(change['start'])  # 初时间
@@ -162,7 +165,7 @@ def convert_chart(json_path: str, omgc_path: str) -> None:
                                 *showing_track_changes_processed[t]))  # 改变 note 轨道函数指令
 
     line_motions_processed = process_changes(
-        project_data['line']['initial_position'], project_data['line']['motions'])
+        project_data['line']['initial_position'], project_data['line']['motions'], True)
     for t in line_motions_processed:
         instructions.append((t, CHANGE_LINE_POS,
                             *line_motions_processed[t]))  # 改变判定线位置函数指令

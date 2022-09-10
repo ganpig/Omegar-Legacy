@@ -22,6 +22,15 @@ SPLIT_LINE = 600
 # 滑块大小
 SLIDER_BUTTON_SIZE = 20
 
+# 消息显示时间
+MSG_SHOW_TIME = 3
+
+# 消息动画时间
+MSG_ANIMATION_TIME = 0.5
+
+# 消息栏高度
+MSG_HEIGHT = 50
+
 # 配置文件名称
 CONFIG_FILE = 'Omegar.ini'
 
@@ -30,6 +39,15 @@ try:
     RESOURCES = sys._MEIPASS
 except:
     RESOURCES = '.'
+
+
+def validate_filename(filename: str) -> str:
+    """
+    文件名合法化。
+    """
+    for i in '\\/:*?"<>|= ':
+        filename = filename.replace(i, '_')
+    return filename
 
 
 def get_res(*args) -> str:
@@ -94,7 +112,7 @@ ALT = 0x02
 
 # 页面名称
 PAGE_NAME = {
-    'home':         '欢迎来到 Omegar',
+    'home':         '欢迎使用 Omegar',
     'pick_beats':   '采拍',
     'edit':         '谱面编辑',
     'settings':     '设置'
@@ -102,11 +120,14 @@ PAGE_NAME = {
 
 
 """
-项目相关
+采拍相关
 """
 
 # 采拍时拍子图标每秒钟行走的像素数
-PICK_BEAT_SPEED = 300
+PICK_BEAT_SPEED = 100
+
+# 自动修正时同组拍子所允许的最大方差
+AUTO_CORRECT_MAX_VARIANCE = 0.01
 
 # 默认判定线初始位置
 DEFAULT_LINE_INITIAL_POSITION = 800

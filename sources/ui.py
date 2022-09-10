@@ -12,16 +12,15 @@ from common import *
 
 class Window:
     blit_list: list = []  # 延迟绘制列表
-    mouse_pos: tuple = (0, 0)
+    mouse_pos: tuple = (0, 0)  # 光标位置
+    msg_time: float = 0  # 消息更新时间
+    msg: str = ''  # 消息
     on_exit = None  # 退出程序时执行
 
     def __init__(self, cp: ConfigParser) -> None:
         self.cp = cp
         self.screen = pygame.display.set_mode(WINDOW_SIZE)
         pygame.key.set_repeat(300, 50)
-
-        if not self.cp.has_section('window'):
-            self.cp.add_section('window')
 
         # 设置窗口背景
         self.background = self.get_or_set('window', 'background', '#c2e3eb')
@@ -52,7 +51,7 @@ class Window:
     配置文件相关部分
     """
 
-    def get_or_set(self, section: str, option: str, default: str) -> str:
+    def get_or_set(self, section: str, option: str, default: str = '') -> str:
         """
         若设置项存在，获取该项的值，否则将该项设置为默认值并返回该值。
         """
@@ -66,8 +65,18 @@ class Window:
         """
         修改设置并保存。
         """
+        if not self.cp.has_section(section):
+            self.cp.add_section(section)
         self.cp.set(section, option, value)
         self.cp.write(open(CONFIG_FILE, 'w', encoding='utf-8'))
+
+    def get_options(self, section: str) -> list:
+        """
+        获取设置列表。
+        """
+        if not self.cp.has_section(section):
+            return []
+        return self.cp.options(section)
 
     """
     颜色相关部分
@@ -222,6 +231,26 @@ class Window:
         exec(f'rect.{align}=pos')
         return self.screen.blit(render, rect)
 
+    def draw_msg(self) -> None:
+        """
+        绘制消息。
+        """
+        if time.time() <= self.msg_time+MSG_SHOW_TIME:
+            msg_appear_time = time.time()-self.msg_time
+            if msg_appear_time <= MSG_ANIMATION_TIME:
+                msg_top = (MSG_HEIGHT+10)*msg_appear_time / \
+                    MSG_ANIMATION_TIME-MSG_HEIGHT
+            elif msg_appear_time >= MSG_SHOW_TIME-MSG_ANIMATION_TIME:
+                msg_top = (MSG_HEIGHT+10)*(MSG_SHOW_TIME -
+                                           msg_appear_time)/MSG_ANIMATION_TIME-MSG_HEIGHT
+            else:
+                msg_top = 10
+            msg_rect = pygame.Rect(10, msg_top, WINDOW_SIZE[0]-20, MSG_HEIGHT)
+            pygame.draw.rect(self.screen, self.main_color,
+                             msg_rect, border_radius=MSG_HEIGHT//2)
+            self.draw_text(self.msg, msg_rect.center,
+                           'center', color=self.tip_color)
+
     def later_blit(self, surface: pygame.Surface, pos: tuple) -> None:
         """
         绘制在窗口最上层
@@ -237,6 +266,13 @@ class Window:
         修改窗口子标题。
         """
         pygame.display.set_caption(title+bool(title)*' - '+WINDOW_TITLE)
+
+    def set_msg(self, msg: str) -> None:
+        """
+        设置消息。
+        """
+        self.msg = msg
+        self.msg_time = time.time()
 
     def process_events(self) -> list:
         """
