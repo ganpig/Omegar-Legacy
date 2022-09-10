@@ -225,7 +225,7 @@ class Window:
         exec(f'rect.{align}=pos')
         return self.screen.blit(render, rect)
 
-    def blit_top(self, surface: pygame.Surface, pos: tuple) -> None:
+    def later_blit(self, surface: pygame.Surface, pos: tuple) -> None:
         """
         绘制在窗口最上层
         """
@@ -284,7 +284,7 @@ class Window:
         """
         退出程序。
         """
-        self.on_exit(1)
+        self.on_exit()
         pygame.quit()
         sys.exit()
 
@@ -338,7 +338,7 @@ class Button:
             tip.set_alpha(alpha)
             rect = tip.get_rect()
             exec(f'rect.{self.text_align}=self.rect.{self.button_align}')
-            self.window.blit_top(tip, rect)
+            self.window.later_blit(tip, rect)
         return self.window.screen.blit(self.icon, self.rect)
 
     def move(self, pos: tuple) -> None:
@@ -437,7 +437,7 @@ class Slider:
             tip.set_alpha(alpha)
             rect = tip.get_rect()
             exec(f'rect.{self.text_align}=self.icon_rect.{self.button_align}')
-            self.window.blit_top(tip, rect)
+            self.window.later_blit(tip, rect)
         return self.bar_rect
 
     def move(self, pos: tuple) -> None:
