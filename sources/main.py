@@ -15,15 +15,18 @@ from ui import *
 
 
 class App:
-    tmp_beats: dict = {}
+    bars: int = 8  # 要添加的小节数
+    bpb: int = 4  # 每小节拍子数
+    bpm: int = 120  # 每分钟拍子数
     buttons: dict = {}  # 按钮
     earliest_beat: float = 0
     later_buttons: dict = {}  # 延迟添加的按钮
     later_del_buttons: list = []  # 延迟删除的按钮
+    project_data: dict = {}  # 项目数据
+    project_path: str = ''  # 项目文件路径
     shortcuts: list = [{}, {}, {}, {}]  # 快捷键列表
     sliders: dict = {}  # 滑动条
-    project_path: str = ''  # 项目文件路径
-    project_data: dict = {}  # 项目数据
+    tmp_beats: dict = {}
 
     def __init__(self) -> None:
         cp = configparser.ConfigParser()
@@ -459,9 +462,18 @@ class App:
                 if 0 < self.buttons[sec].rect.right < SPLIT_LINE:
                     self.buttons[sec].show()
 
-        t = self.window.draw_text('自动修正', (SPLIT_LINE+10, start+20), 'topleft')
+        t = self.window.draw_text('手动模式', (SPLIT_LINE+10, start+20))
+        t = self.window.draw_text('自动修正', (SPLIT_LINE+20, t.bottom+10), size=0)
         self.show_button('auto_correct', ICONS['go'], (
             WINDOW_SIZE[0]-10, t.centery), 'midright', self._auto_correct_beats, 'circle')
+
+        t = self.window.draw_text('批量模式', (SPLIT_LINE+10, t.bottom+20))
+        t = self.window.draw_text(
+            'Tip: 可点击进度条滑块精确定位时间', (SPLIT_LINE+20, t.bottom+10), size=0)
+        t=self.window.draw_text(f'每小节拍子数：{self.bpb}',(SPLIT_LINE+20,t.bottom+20),size=0)
+        
+        t = self.show_button('change_btb', ICONS['change'], (
+            WINDOW_SIZE[0]-10, t.centery), 'midright', self._change_bpb, 'rect')
 
     def _play_or_pause(self) -> None:
         if self.player.get_playing():
@@ -492,6 +504,8 @@ class App:
         sorted_beats = sorted(self.tmp_beats)
         self.earliest_beat = sorted_beats[0]
         self.tmp_beats[self.earliest_beat] = True
+        if self.earliest_beat in self.buttons:
+            self.buttons[self.earliest_beat].change_icon(ICONS['orange_beat'])
         for i in sorted_beats:
             if self.tmp_beats[i]:
                 tmp.append([i])
@@ -514,6 +528,29 @@ class App:
             self._add_beat(time, bak_beats[time_points[i]], False)
         self._process_beats()
         self.window.set_msg('自动修正完成！')
+
+    def _change_bpb(self) -> None:
+        self.bpb = {1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 1}[self.bpb]
+
+    def _set_bpm(self, f: float) -> None:
+        self.bpm = int(60*(1-f)+320*f)
+
+    def _get_bpm(self) -> float:
+        return (self.bpm-60)/260
+
+    def _enter_bpm(self) -> None:
+        bpm = easygui.enterbox('请输入每分钟拍子数', '设置 BPM')
+        try:
+            self.bpm = round(float(bpm), 2)
+        except:
+            self.window.set_msg('输入的 BPM 无效！')
+
+    def _enter_bars(self) -> None:
+        bars = easygui.enterbox('请输入要添加的小节数', '批量采拍')
+        try:
+            self.bars = int(bars)
+        except:
+            self.window.set_msg('输入的小节数无效！')
 
     def _exit_pick_beats(self) -> None:
         self.player.close()
