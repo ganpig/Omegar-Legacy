@@ -1,0 +1,11 @@
+{
+    "project_name": "Neptune",
+    "music_path": "D:\\Programs\\Python\\Omegar\\test-projects\\Neptune\\Neptune.mp3",
+    "beats": [],
+    "page": "pick_beats",
+    "notes": [],
+    "line": {
+        "initial_position": 800,
+        "motions": []
+    }
+}

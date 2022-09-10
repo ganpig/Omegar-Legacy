@@ -11,10 +11,6 @@ from common import *
 
 
 class Window:
-    """
-    窗口类。
-    """
-
     blit_list: list = []  # 延迟绘制列表
     mouse_pos: tuple = (0, 0)
     on_exit = None  # 退出程序时执行
@@ -22,6 +18,7 @@ class Window:
     def __init__(self, cp: ConfigParser) -> None:
         self.cp = cp
         self.screen = pygame.display.set_mode(WINDOW_SIZE)
+        pygame.key.set_repeat(500, 100)
 
         if not self.cp.has_section('window'):
             self.cp.add_section('window')
@@ -93,7 +90,7 @@ class Window:
         return tuple(int(hex_color[i:i+2], 16) for i in range(1, 7, 2))
 
     """
-    窗口样式设置部分
+    外观设置部分
     """
 
     def apply_bg_mode(self, mode: str) -> None:
@@ -232,7 +229,7 @@ class Window:
         self.blit_list.append((surface, pos))
 
     """
-    程序流程相关部分
+    程序流程部分
     """
 
     def set_subtitle(self, title: str = '') -> None:
@@ -251,11 +248,7 @@ class Window:
             if event.type == pygame.MOUSEMOTION:
                 self.mouse_pos = event.pos
                 ret.append(event)
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                ret.append(event)
-            elif event.type == pygame.MOUSEBUTTONUP:
-                ret.append(event)
-            elif event.type == pygame.USEREVENT:
+            elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.KEYDOWN, pygame.USEREVENT):
                 ret.append(event)
             elif event.type == pygame.QUIT:
                 if easygui.ynbox('真的要退出程序吗？', '不要离开我啊 QwQ', ('退出', '手滑了')):
@@ -290,10 +283,6 @@ class Window:
 
 
 class Button:
-    """
-    按钮类。
-    """
-
     touch_time: float = 0  # 正值代表光标触碰按钮的时间，负值代表光标离开按钮的时间
 
     def __init__(self, window: Window, icon: pygame.Surface, pos: tuple, align: str = 'topleft', todo=easygui.msgbox, background: str = '', text: str = '', text_align: str = 'midright', button_align: str = 'midleft', todo_with_arg: bool = False, todo_right=None) -> None:
@@ -368,10 +357,6 @@ class Button:
 
 
 class Slider:
-    """
-    滑动条类。
-    """
-
     click_pos: tuple = (0, 0)  # 点击滑块时的光标位置
     setting: bool = False  # 是否处于“滑动即设置”状态
     touch_time: float = 0  # 见 Button 类说明
