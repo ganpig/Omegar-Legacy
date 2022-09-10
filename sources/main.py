@@ -75,10 +75,7 @@ class App:
         """
         从当前页面返回。
         """
-        try:
-            eval('self._exit_'+self.page)()
-        except:
-            pass
+        eval('self._exit_'+self.page)()
 
     def return_home(self) -> None:
         """
@@ -382,6 +379,10 @@ class App:
     def _draw_home(self, start) -> None:
         self.show_button('settings', ICONS['settings'], (WINDOW_SIZE[0]-10, WINDOW_SIZE[1]-10),
                          'bottomright', lambda: self.open('settings'), 'circle', '设置')
+
+        rect = self.window.logo.get_rect()
+        rect.center = (SPLIT_LINE/2, WINDOW_SIZE[1]/2)
+        self.window.screen.blit(self.window.logo, rect)
 
         t = self.window.draw_text(
             '创建项目 (Ctrl+N)', (SPLIT_LINE+10, start+20), 'topleft')

@@ -12,6 +12,7 @@ from common import *
 
 class Window:
     blit_list: list = []  # 延迟绘制列表
+    logo: pygame.Surface = pygame.image.load(get_res('icons', 'logo.png'))
     mouse_pos: tuple = (0, 0)  # 光标位置
     msg_time: float = 0  # 消息更新时间
     msg: str = ''  # 消息
@@ -20,7 +21,7 @@ class Window:
     def __init__(self, cp: ConfigParser) -> None:
         self.cp = cp
         self.screen = pygame.display.set_mode(WINDOW_SIZE)
-        pygame.display.set_icon(pygame.image.load(get_res('icons', 'icon.png')))
+        pygame.display.set_icon(self.logo)
         pygame.key.set_repeat(300, 50)
 
         # 设置窗口背景
