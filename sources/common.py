@@ -85,6 +85,13 @@ for name in ICON_INFO:
     ICONS[name] = pygame.transform.scale(pygame.image.load(
         get_res('icons', name+'.png')), ICON_INFO[name])
 
+"""
+快捷键相关
+"""
+
+CTRL = 0x01
+ALT = 0x02
+
 # 页面名称
 PAGE_NAME = {
     'home':         '欢迎来到 Omegar',

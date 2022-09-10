@@ -7,10 +7,6 @@ from common import *
 
 
 class Player:
-    """
-    音乐播放器。
-    """
-
     file: str = ''
     length: float = 0
     offset: float = 0
