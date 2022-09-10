@@ -72,13 +72,13 @@ class Window:
         self.cp.set(section, option, value)
         self.cp.write(open(CONFIG_FILE, 'w', encoding='utf-8'))
 
-    def get_options(self, section: str) -> list:
-        """
-        获取设置列表。
-        """
-        if not self.cp.has_section(section):
-            return []
-        return self.cp.options(section)
+    # def get_options(self, section: str) -> list:
+    #     """
+    #     获取设置列表。
+    #     """
+    #     if not self.cp.has_section(section):
+    #         return []
+    #     return self.cp.options(section)
 
     """
     颜色相关部分
