@@ -27,6 +27,7 @@ class App:
     shortcuts: list = [{}, {}, {}, {}]  # 快捷键列表
     sliders: dict = {}  # 滑动条
     tmp_beats: dict = {}
+    recent_projects: dict={} #最近项目
 
     def __init__(self) -> None:
         cp = configparser.ConfigParser()
@@ -62,6 +63,15 @@ class App:
         self.sliders = {}
         self.shortcuts = [{}, {}, {}, {}]
         eval('self._open_'+page)()
+
+    def record_project(self,path: str) -> None:
+        """s
+        记录最近项目。
+        """
+        if path:
+            self.recent_projects[path] = time.time()
+            with open('recent_projects.pkl', 'wb') as f:
+                pickle.dump(self.recent_projects, f)
 
     def draw(self) -> None:
         """
