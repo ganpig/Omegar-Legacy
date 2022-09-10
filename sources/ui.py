@@ -20,6 +20,7 @@ class Window:
     def __init__(self, cp: ConfigParser) -> None:
         self.cp = cp
         self.screen = pygame.display.set_mode(WINDOW_SIZE)
+        pygame.display.set_icon(pygame.image.load(get_res('icons', 'icon.png')))
         pygame.key.set_repeat(300, 50)
 
         # 设置窗口背景
