@@ -129,6 +129,8 @@ class App:
                 self.window, icon, pos, align, todo, background, text, text_align, button_align, todo_with_arg, todo_right)
         elif icon != self.buttons[name].icon:
             self.buttons[name].change_icon(icon)
+        elif text != self.buttons[name].text:
+            self.buttons[name].text = text
         else:
             self.buttons[name].move(pos)
         return self.buttons[name].show()
@@ -391,14 +393,15 @@ class App:
         self.shortcuts[0][pygame.K_SPACE] = lambda: play_or_pause(
             self.buttons['play_or_pause'])
         self.shortcuts[0][pygame.K_LEFT] = lambda: self.player.set_pos(
-            self.player.get_pos()-5)
+            self.player.get_pos()-1)
         self.shortcuts[0][pygame.K_RIGHT] = lambda: self.player.set_pos(
-            self.player.get_pos()+5)
+            self.player.get_pos()+1)
 
         def process_beat() -> None:
             tmp = []
             sorted_beats = sorted(self.tmp_beats)
             self.earliest_beat = sorted_beats[0]
+            self.tmp_beats[self.earliest_beat] = True
             for i in sorted_beats:
                 if self.tmp_beats[i]:
                     tmp.append([i])
@@ -421,7 +424,7 @@ class App:
             process_beat()
 
         t2 = self.show_button('add_beat', ICONS['add'], (SPLIT_LINE-10, 10), 'topright', lambda: add_beat(self.player.get_pos(
-        ), False), 'rect', '左击或按↓添加弱拍，右击或按↑添加强拍'if self.player.get_pos() > self.earliest_beat else '单击或按↑添加强拍', todo_right=lambda: add_beat(self.player.get_pos(), True))
+        ), False), 'rect', '左击或按↓添加弱拍，右击或按↑添加强拍' if self.player.get_pos() > self.earliest_beat else '单击或按↑添加强拍', todo_right=lambda: add_beat(self.player.get_pos(), True))
 
         self.shortcuts[0][pygame.K_DOWN] = lambda: add_beat(
             self.player.get_pos(), False)

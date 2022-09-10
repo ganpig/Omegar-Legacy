@@ -18,7 +18,7 @@ class Window:
     def __init__(self, cp: ConfigParser) -> None:
         self.cp = cp
         self.screen = pygame.display.set_mode(WINDOW_SIZE)
-        pygame.key.set_repeat(500, 100)
+        pygame.key.set_repeat(300, 50)
 
         if not self.cp.has_section('window'):
             self.cp.add_section('window')
