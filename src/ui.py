@@ -12,7 +12,7 @@ from common import *
 
 class Window:
     blit_list: list = []  # 延迟绘制列表
-    logo: pygame.Surface = pygame.image.load(get_res('icons', 'logo.png'))
+    logo: pygame.Surface = pygame.image.load(get_res('logo.png'))
     mouse_pos: tuple = (0, 0)  # 光标位置
     msg_time: float = 0  # 消息更新时间
     msg: str = ''  # 消息
@@ -227,7 +227,7 @@ class Window:
         """
         绘制文字。
         """
-        render = FONTS[font][size].render(
+        render = FONTS[size].render(
             text, True, color if color else self.main_color)
         rect = render.get_rect()
         exec(f'rect.{align}=pos')
@@ -359,7 +359,7 @@ class Button:
                                  pygame.Rect((0, 0), self.size), 0, 5)
             self.window.screen.blit(alpha_surface, self.rect)
         if self.text:
-            tip = FONTS[0][0].render(
+            tip = FONTS[0].render(
                 self.text, True, self.window.tip_color, self.window.main_color)
             tip.set_alpha(alpha)
             rect = tip.get_rect()
@@ -453,7 +453,7 @@ class Slider:
         self.window.screen.blit(
             ICONS['crystal' if 0 <= self.get_value() <= 1 else 'warning'], self.icon_rect)
         if self.get_text:
-            tip = FONTS[0][0].render(
+            tip = FONTS[0].render(
                 self.get_text(), True, self.window.tip_color, self.window.main_color)
             tip.set_alpha(alpha)
             rect = tip.get_rect()

@@ -3,6 +3,7 @@ import json
 import math
 import os
 import pickle
+import statistics
 import time
 
 import easygui
@@ -22,6 +23,7 @@ class App:
     earliest_beat: float = 0
     later_buttons: dict = {}  # 延迟添加的按钮
     later_del_buttons: list = []  # 延迟删除的按钮
+    latest_beat: float = 0
     project_data: dict = {}  # 项目数据
     project_path: str = ''  # 项目文件路径
     shortcuts: list = [{}, {}, {}, {}]  # 快捷键列表
@@ -120,7 +122,8 @@ class App:
                 if event.key in self.shortcuts[ctrl_alt]:
                     self.shortcuts[ctrl_alt][event.key]()
             elif event.type == pygame.USEREVENT:
-                self.player.replay()
+                if self.player.opening:
+                    self.player.replay()
         self.buttons.update(self.later_buttons)
         self.later_buttons.clear()
         for i in self.later_del_buttons:
@@ -430,6 +433,7 @@ class App:
         self.player.open(self.project_data['music_path'])
         self.window.set_subtitle(self.project_data['project_name'])
         self.earliest_beat = math.inf
+        self.latest_beat = 0
         self.tmp_beats.clear()  # key 为时间，value 为 True 表示强拍，False 表示弱拍
         for bar in self.project_data['beats']:
             for i, time in enumerate(bar):
@@ -471,7 +475,10 @@ class App:
                     self.buttons[sec].show()
 
         t = self.window.draw_text(
-            'Tip: 可点击进度条滑块精确定位时间', (SPLIT_LINE+10, start+20), size=0)
+            'Tip：可点击进度条滑块精确定位时间', (SPLIT_LINE+10, start+20), size=0)
+        if len(self.tmp_beats) >= 2:
+            t = self.window.draw_text(f'当前平均 BPM：{round(60/((self.latest_beat-self.earliest_beat)/(len(self.tmp_beats)-1)),2)}',
+                                      (SPLIT_LINE+10, t.bottom+10), size=0)
         t = self.window.draw_text('全部清除', (SPLIT_LINE+10, t.bottom+20))
         self.show_button('clear_all', ICONS['go'], (
             WINDOW_SIZE[0]-10, t.centery), 'midright', self._clear_all_beats, 'circle')
@@ -479,7 +486,7 @@ class App:
         self.show_button('auto_correct', ICONS['go'], (
             WINDOW_SIZE[0]-10, t.centery), 'midright', self._auto_correct_beats, 'circle')
 
-        t = self.window.draw_text('批量添加拍子', (SPLIT_LINE+10, t.bottom+20))
+        t = self.window.draw_text('批量添加拍子', (SPLIT_LINE+10, t.bottom+10))
         self.show_button('batch_add', ICONS['go'], (
             WINDOW_SIZE[0]-10, t.centery), 'midright', self._batch_add_beats, 'circle')
         t = self.window.draw_text(
@@ -494,6 +501,11 @@ class App:
             f'BPM：{self.bpm}', (SPLIT_LINE+20, t.bottom+10), size=0)
         self.show_slider('change_bpm', (SPLIT_LINE+150, t.centery),
                          WINDOW_SIZE[0]-SPLIT_LINE-160, 10, 'midleft', self._get_bpm, self._set_bpm, self._enter_bpm)
+
+        t = self.window.draw_text(
+            '完成采拍', (SPLIT_LINE+10, WINDOW_SIZE[1]-10), 'bottomleft')
+        self.show_button('finish_picking', ICONS['go'], (
+            WINDOW_SIZE[0]-10, t.centery), 'midright', self._finish_picking, 'circle')
 
     def _play_or_pause(self) -> None:
         if self.player.get_playing():
@@ -516,6 +528,8 @@ class App:
             if sec < self.earliest_beat:
                 self.earliest_beat = sec
                 strong = True
+            if sec > self.latest_beat:
+                self.latest_beat = sec
             self.tmp_beats[sec] = strong
             self.later_add_button(sec, ICONS['orange_beat' if strong else 'green_beat'], (0, 0), 'center', lambda: self.player.set_pos(
                 sec), 'circle', '左击定位到此，右击删除拍子', 'midtop', 'midbottom', lambda: self._delete_beat(sec))
@@ -533,6 +547,7 @@ class App:
             tmp = []
             sorted_beats = sorted(self.tmp_beats)
             self.earliest_beat = sorted_beats[0]
+            self.latest_beat = sorted_beats[-1]
             self.tmp_beats[self.earliest_beat] = True
             if self.earliest_beat in self.buttons:
                 self.buttons[self.earliest_beat].change_icon(
@@ -556,14 +571,29 @@ class App:
     def _auto_correct_beats(self) -> None:
         bak_beats = dict(self.tmp_beats)
         time_points = sorted(bak_beats)
-        time_points_arr = (ctypes.c_double*len(time_points))(*time_points)
-        dll = load_dll('autoCorrect')
-        dll.autoCorrect.argtypes = (
-            ctypes.c_int, ctypes.Array, ctypes.c_double)
-        dll.autoCorrect(len(time_points),
-                        time_points_arr, AUTO_CORRECT_MAX_VARIANCE)
+        time_points_diff = [time_points[i+1]-time_points[i]  # 差分
+                            for i in range(len(time_points)-1)]
+        avg_step = last_step = weighted_sum = time_points_diff[0]
+        cnt = 1  # 当前段步数
+
+        for i in range(1, len(time_points_diff)):
+            cnt += 1
+            weighted_sum += time_points_diff[i]*cnt
+            avg_step = weighted_sum/(cnt*(cnt+1)/2)
+            if statistics.variance(time_points_diff[i-cnt+1:i+1], avg_step) <= AUTO_CORRECT_MAX_VARIANCE:
+                last_step = avg_step
+            else:
+                time_points_diff[i-cnt+1:i] = [last_step]*(cnt-1)
+                avg_step = last_step = weighted_sum = time_points_diff[i]
+                cnt = 1
+        time_points_diff[len(time_points_diff)-cnt +
+                         1:len(time_points_diff)] = [last_step]*(cnt-1)
+        time_points_new = [time_points[0]]
+        for i in range(len(time_points_diff)):
+            time_points_new.append(time_points_new[i]+time_points_diff[i])
+
         self._clear_all_beats(False)
-        for i, time in enumerate(list(time_points_arr)):
+        for i, time in enumerate(time_points_new):
             self._add_beat(time, bak_beats[time_points[i]], False)
         self._process_beats()
         self.window.set_msg('自动修正完成！')
@@ -601,6 +631,10 @@ class App:
                 self._add_beat(now+(i*self.bpb+j)*spb, not j, False)
         self._process_beats()
 
+    def _finish_picking(self) -> None:
+        self.player.replay()
+        self.open('edit')
+
     def _exit_pick_beats(self) -> None:
         self.player.close()
         self.close_project()
@@ -618,6 +652,15 @@ class App:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',
                          self.exit, 'circle', '返回', 'midleft', 'midright')
         self.window.set_subtitle(self.project_path)
+
+        t = self.window.draw_text(
+            '返回采拍', (SPLIT_LINE+10, WINDOW_SIZE[1]-10), 'bottomleft')
+        self.show_button('return_picking', ICONS['go'], (
+            WINDOW_SIZE[0]-10, t.centery), 'midright', self._return_picking, 'circle')
+
+    def _return_picking(self) -> None:
+        self.player.replay()
+        self.open('pick_beats')
 
     def _exit_edit(self) -> None:
         self.player.close()

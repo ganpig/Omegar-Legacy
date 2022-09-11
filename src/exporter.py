@@ -2,7 +2,6 @@ import hashlib
 import json
 import math
 import shutil
-from sqlite3 import InternalError
 import struct
 import tempfile
 import zipfile

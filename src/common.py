@@ -1,4 +1,3 @@
-import ctypes
 import os
 import sys
 
@@ -7,9 +6,8 @@ import pygame
 pygame.init()
 
 """
-程序 UI 相关
+程序 UI
 """
-
 # 窗口标题
 WINDOW_TITLE = 'Omegar v0.1'
 
@@ -39,9 +37,9 @@ RECENT_FILE = 'Recent.pkl'
 
 # 资源文件路径
 try:
-    RESOURCES = sys._MEIPASS
+    RES_DIR = sys._MEIPASS
 except:
-    RESOURCES = '.'
+    RES_DIR = '.'
 
 
 def validate_filename(filename: str) -> str:
@@ -53,36 +51,16 @@ def validate_filename(filename: str) -> str:
     return filename
 
 
-def get_res(*args) -> str:
+def get_res(name: str) -> str:
     """
     获取资源文件路径。
     """
-    return os.path.join(RESOURCES, *args)
+    return os.path.join(RES_DIR, 'res', name)
 
-
-def load_dll(name: str) -> ctypes.CDLL:
-    """
-    加载动态链接库。
-    """
-    if os.name == 'nt':
-        return ctypes.CDLL(get_res('dlls', name+'.dll'), winmode=0)
-    else:
-        return ctypes.cdll.LoadLibrary(get_res('dlls', name+'.so'))
-
-
-# 字体大小
-FONT_SIZE = [20, 25, 30, 35]
 
 # 字体列表
-FONT_LIST = [
-    'FZFWQingYinTiJWL.ttf',
-    'CascadiaCode.ttf'
-]
-
-FONTS = []
-for font in FONT_LIST:
-    FONTS.append([pygame.font.Font(get_res('fonts', font), size)
-                 for size in FONT_SIZE])
+FONTS = [pygame.font.Font(get_res('FZFWQingYinTiJWL.ttf'), size)
+         for size in range(18, 42, 6)]
 
 # 图标名称和大小
 ICON_INFO: dict = {
@@ -104,14 +82,7 @@ ICON_INFO: dict = {
 ICONS = {}
 for name in ICON_INFO:
     ICONS[name] = pygame.transform.scale(pygame.image.load(
-        get_res('icons', name+'.png')), ICON_INFO[name])
-
-"""
-快捷键相关
-"""
-
-CTRL = 0x01
-ALT = 0x02
+        get_res(name+'.png')), ICON_INFO[name])
 
 # 页面名称
 PAGE_NAME = {
@@ -123,9 +94,15 @@ PAGE_NAME = {
 
 
 """
-采拍相关
+快捷键
 """
+CTRL = 0x01
+ALT = 0x02
 
+
+"""
+采拍
+"""
 # 采拍时拍子图标每秒钟行走的像素数
 PICK_BEAT_SPEED = 100
 
@@ -137,9 +114,8 @@ DEFAULT_LINE_INITIAL_POSITION = 800
 
 
 """
-音乐播放相关
+播放音乐
 """
-
 # 检验 pygame.mixer.music 是否处于播放状态前的等待秒数
 MUSIC_CHECK_DELAY = 0.02
 
@@ -148,9 +124,8 @@ MUSIC_CHECK_ACCURACY = 0.1
 
 
 """
-OMGC 相关
+导出工程
 """
-
 # 可见区域边界
 TOP_EDGE = 0
 BOTTOM_EDGE = 1000

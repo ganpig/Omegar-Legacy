@@ -5,3 +5,15 @@
 开发者请参阅 [文件格式文档](docs/File-Format.md) 和 [第三方库列表](docs/3rd-Party-Libraries.md)
 
 谱师请参阅 [用户手册](docs/User-Guide.md)
+
+## 目录说明
+
+`dll`：暂时弃用的动态链接库相关程序。
+
+`doc`：程序文档目录。
+
+`res`：程序资源文件目录。
+
+`src`：程序源代码目录。
+
+`test-projects`：用于测试的项目。
