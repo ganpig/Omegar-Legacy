@@ -34,6 +34,9 @@ MSG_HEIGHT = 50
 # 配置文件名称
 CONFIG_FILE = 'Omegar.ini'
 
+# 最近项目文件名称
+RECENT_FILE = 'Recent.pkl'
+
 # 资源文件路径
 try:
     RESOURCES = sys._MEIPASS

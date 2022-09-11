@@ -27,15 +27,18 @@ class App:
     shortcuts: list = [{}, {}, {}, {}]  # 快捷键列表
     sliders: dict = {}  # 滑动条
     tmp_beats: dict = {}
-    recent_projects: dict={} #最近项目
+    recent_projects: dict = {}  # 最近项目
 
     def __init__(self) -> None:
         cp = configparser.ConfigParser()
-        if os.path.isfile('config.ini'):
+        if os.path.isfile(CONFIG_FILE):
             try:
-                cp.read('config.ini', encoding='utf-8')
+                cp.read(CONFIG_FILE, encoding='utf-8')
             except:
                 pass
+        if os.path.isfile(RECENT_FILE):
+            with open(RECENT_FILE, 'rb') as f:
+                self.recent_projects = pickle.load(f)
         self.window = Window(cp)
         self.window.on_exit = self.close_project
         self.player = Player()
@@ -64,13 +67,13 @@ class App:
         self.shortcuts = [{}, {}, {}, {}]
         eval('self._open_'+page)()
 
-    def record_project(self,path: str) -> None:
-        """s
+    def record_project(self, path: str) -> None:
+        """
         记录最近项目。
         """
         if path:
             self.recent_projects[path] = time.time()
-            with open('recent_projects.pkl', 'wb') as f:
+            with open(RECENT_FILE, 'wb') as f:
                 pickle.dump(self.recent_projects, f)
 
     def draw(self) -> None:
@@ -202,8 +205,7 @@ class App:
                 }
             }
             self.open('pick_beats')
-            self.window.set_and_save(
-                'recent', project_path, str(int(time.time())))
+            self.record_project(project_path)
         except:
             easygui.exceptionbox('创建项目失败！', WINDOW_TITLE)
             self.return_home()
@@ -218,13 +220,15 @@ class App:
                     '打开项目', WINDOW_TITLE, '*.json', ['*.json'])
                 if not path:
                     return
+            if not os.path.isfile(path):
+                easygui.msgbox(f'文件 {path} 不存在！')
+                return
             self.project_path = path
             self.project_data = json.load(open(path))
             while not os.path.isfile(self.project_data['music_path']):
                 self.project_data['music_path'] = easygui.fileopenbox(
                     '歌曲音频文件无效，请重新选择', WINDOW_TITLE, '*.mp3', ['*.mp3'])
-            self.window.set_and_save(
-                'recent', path, str(int(time.time())))
+            self.record_project(path)
             self.open(self.project_data['page'])
 
         except:
@@ -260,15 +264,18 @@ class App:
         """
         查看最近的项目。
         """
-        recent_projects = sorted(self.recent_projects, key=lambda x: self.recent_projects[x], reverse=True)
+        recent_projects = sorted(
+            self.recent_projects, key=lambda x: self.recent_projects[x], reverse=True)
         if not recent_projects:
             self.window.set_msg('无最近项目！')
         else:
-            path = easygui.choicebox('请选择要打开的项目', '最近项目', ['清除项目打开记录']+recent_projects)
+            path = easygui.choicebox(
+                '请选择要打开的项目', '最近项目', recent_projects+['清除项目打开记录'])
             if not path:
                 return
             elif path == '清除项目打开记录':
                 self.recent_projects.clear()
+                os.remove(RECENT_FILE)
             else:
                 self.open_project(path)
 
@@ -414,16 +421,6 @@ class App:
             '导出项目 (Ctrl+E)', (SPLIT_LINE+10, t.bottom+10), 'topleft')
         self.show_button('export', ICONS['go'], (WINDOW_SIZE[0]-10,
                                                  t.centery), 'midright', self.export_project, 'circle')
-        
-        # t = self.window.draw_text(
-        #     '添加快捷键', (SPLIT_LINE+10, t.bottom+10), 'topleft')
-        # self.show_button('export', ICONS['go'], (WINDOW_SIZE[0]-10,
-        #                                          t.centery), 'midright', self.export_project, 'circle')
-        
-        # t = self.window.draw_text(
-        #     '添加按钮', (SPLIT_LINE+10, t.bottom+10), 'topleft')
-        # self.show_button('export', ICONS['go'], (WINDOW_SIZE[0]-10,
-        #                                          t.centery), 'midright', self.export_project, 'circle')
 
     """
     采拍页面
@@ -460,15 +457,8 @@ class App:
         t2 = self.show_button('add_beat', ICONS['add'], (SPLIT_LINE-10, 10), 'topright', lambda: self._add_beat(self.player.get_pos(
         ), False), 'rect', '左击或按↓添加弱拍，右击或按↑添加强拍' if self.player.get_pos() > self.earliest_beat else '单击或按↑添加强拍', todo_right=lambda: self._add_beat(self.player.get_pos(), True))
 
-        def set_player_pos() -> None:
-            pos = easygui.enterbox('请输入定位秒数', '控制播放进度')
-            if pos:
-                try:
-                    self.player.set_pos(float(pos))
-                except:
-                    easygui.msgbox('请输入一个整数或小数！', '控制播放进度')
         t = self.show_slider('music_pos', (t1.right+10, t1.centery), t2.left-t1.right-20, align='midleft', get_value=self.player.get_prog,
-                             set_value=self.player.set_prog, set_directly=set_player_pos, get_text=self.player.get_text, text_align='midtop', button_align='midbottom')
+                             set_value=self.player.set_prog, set_directly=self._set_player_pos, get_text=self.player.get_text, text_align='midtop', button_align='midbottom')
 
         pygame.draw.line(self.window.screen, self.window.main_color, (SPLIT_LINE/2,
                          WINDOW_SIZE[1]/2-50), (SPLIT_LINE/2, WINDOW_SIZE[1]/2+50), 5)
@@ -480,18 +470,30 @@ class App:
                 if 0 < self.buttons[sec].rect.right < SPLIT_LINE:
                     self.buttons[sec].show()
 
-        t = self.window.draw_text('手动模式', (SPLIT_LINE+10, start+20))
-        t = self.window.draw_text('自动修正', (SPLIT_LINE+20, t.bottom+10), size=0)
+        t = self.window.draw_text(
+            'Tip: 可点击进度条滑块精确定位时间', (SPLIT_LINE+10, start+20), size=0)
+        t = self.window.draw_text('全部清除', (SPLIT_LINE+10, t.bottom+20))
+        self.show_button('clear_all', ICONS['go'], (
+            WINDOW_SIZE[0]-10, t.centery), 'midright', self._clear_all_beats, 'circle')
+        t = self.window.draw_text('自动修正', (SPLIT_LINE+10, t.bottom+10))
         self.show_button('auto_correct', ICONS['go'], (
             WINDOW_SIZE[0]-10, t.centery), 'midright', self._auto_correct_beats, 'circle')
 
-        t = self.window.draw_text('批量模式', (SPLIT_LINE+10, t.bottom+20))
+        t = self.window.draw_text('批量添加拍子', (SPLIT_LINE+10, t.bottom+20))
+        self.show_button('batch_add', ICONS['go'], (
+            WINDOW_SIZE[0]-10, t.centery), 'midright', self._batch_add_beats, 'circle')
         t = self.window.draw_text(
-            'Tip: 可点击进度条滑块精确定位时间', (SPLIT_LINE+20, t.bottom+10), size=0)
-        t=self.window.draw_text(f'每小节拍子数：{self.bpb}',(SPLIT_LINE+20,t.bottom+20),size=0)
-        
-        t = self.show_button('change_btb', ICONS['change'], (
+            f'添加的小节数：{self.bars}', (SPLIT_LINE+20, t.bottom+10), size=0)
+        self.show_button('enter_bars', ICONS['set'], (
+            WINDOW_SIZE[0]-10, t.centery), 'midright', self._enter_bars, 'rect')
+        t = self.window.draw_text(
+            f'每小节拍子数：{self.bpb}', (SPLIT_LINE+20, t.bottom+10), size=0)
+        self.show_button('change_btb', ICONS['change'], (
             WINDOW_SIZE[0]-10, t.centery), 'midright', self._change_bpb, 'rect')
+        t = self.window.draw_text(
+            f'BPM：{self.bpm}', (SPLIT_LINE+20, t.bottom+10), size=0)
+        self.show_slider('change_bpm', (SPLIT_LINE+150, t.centery),
+                         WINDOW_SIZE[0]-SPLIT_LINE-160, 10, 'midleft', self._get_bpm, self._set_bpm, self._enter_bpm)
 
     def _play_or_pause(self) -> None:
         if self.player.get_playing():
@@ -501,15 +503,24 @@ class App:
             self.player.play()
             self.buttons['play_or_pause'].change_icon(ICONS['pause'])
 
+    def _set_player_pos(self) -> None:
+        pos = easygui.enterbox('请输入定位秒数', '控制播放进度', str(self.player.get_pos()))
+        if pos:
+            try:
+                self.player.set_pos(float(pos))
+            except:
+                easygui.msgbox('请输入一个整数或小数！', '控制播放进度')
+
     def _add_beat(self, sec: float, strong: bool, process: bool = True) -> None:
-        if sec < self.earliest_beat:
-            self.earliest_beat = sec
-            strong = True
-        self.tmp_beats[sec] = strong
-        self.later_add_button(sec, ICONS['orange_beat' if strong else 'green_beat'], (0, 0), 'center', lambda: self.player.set_pos(
-            sec), 'circle', '左击定位到此，右击删除拍子', 'midtop', 'midbottom', lambda: self._delete_beat(sec))
-        if process:
-            self._process_beats()
+        if sec <= self.player.length:
+            if sec < self.earliest_beat:
+                self.earliest_beat = sec
+                strong = True
+            self.tmp_beats[sec] = strong
+            self.later_add_button(sec, ICONS['orange_beat' if strong else 'green_beat'], (0, 0), 'center', lambda: self.player.set_pos(
+                sec), 'circle', '左击定位到此，右击删除拍子', 'midtop', 'midbottom', lambda: self._delete_beat(sec))
+            if process:
+                self._process_beats()
 
     def _delete_beat(self, sec: float, process: bool = True) -> None:
         del self.tmp_beats[sec]
@@ -518,30 +529,40 @@ class App:
             self._process_beats()
 
     def _process_beats(self) -> None:
-        tmp = []
-        sorted_beats = sorted(self.tmp_beats)
-        self.earliest_beat = sorted_beats[0]
-        self.tmp_beats[self.earliest_beat] = True
-        if self.earliest_beat in self.buttons:
-            self.buttons[self.earliest_beat].change_icon(ICONS['orange_beat'])
-        for i in sorted_beats:
-            if self.tmp_beats[i]:
-                tmp.append([i])
-            else:
-                tmp[-1].append(i)
-        self.project_data['beats'] = tmp
+        if self.tmp_beats:
+            tmp = []
+            sorted_beats = sorted(self.tmp_beats)
+            self.earliest_beat = sorted_beats[0]
+            self.tmp_beats[self.earliest_beat] = True
+            if self.earliest_beat in self.buttons:
+                self.buttons[self.earliest_beat].change_icon(
+                    ICONS['orange_beat'])
+            for i in sorted_beats:
+                if self.tmp_beats[i]:
+                    tmp.append([i])
+                else:
+                    tmp[-1].append(i)
+            self.project_data['beats'] = tmp
+        else:
+            self.earliest_beat = math.inf
+            self.project_data['beats'] = []
+
+    def _clear_all_beats(self, ask=True) -> None:
+        if not ask or easygui.ynbox('确认清除全部节拍？', '清除全部'):
+            for time in list(self.tmp_beats.keys()):
+                self._delete_beat(time, False)
+            self._process_beats()
 
     def _auto_correct_beats(self) -> None:
         bak_beats = dict(self.tmp_beats)
         time_points = sorted(bak_beats)
-        for time in time_points:
-            self._delete_beat(time, False)
         time_points_arr = (ctypes.c_double*len(time_points))(*time_points)
         dll = load_dll('autoCorrect')
         dll.autoCorrect.argtypes = (
             ctypes.c_int, ctypes.Array, ctypes.c_double)
         dll.autoCorrect(len(time_points),
                         time_points_arr, AUTO_CORRECT_MAX_VARIANCE)
+        self._clear_all_beats(False)
         for i, time in enumerate(list(time_points_arr)):
             self._add_beat(time, bak_beats[time_points[i]], False)
         self._process_beats()
@@ -560,6 +581,8 @@ class App:
         bpm = easygui.enterbox('请输入每分钟拍子数', '设置 BPM')
         try:
             self.bpm = round(float(bpm), 2)
+            if self.bpm == int(self.bpm):
+                self.bpm = int(self.bpm)
         except:
             self.window.set_msg('输入的 BPM 无效！')
 
@@ -569,6 +592,14 @@ class App:
             self.bars = int(bars)
         except:
             self.window.set_msg('输入的小节数无效！')
+
+    def _batch_add_beats(self) -> None:
+        now = self.player.get_pos()
+        spb = 60/self.bpm
+        for i in range(self.bars):
+            for j in range(self.bpb):
+                self._add_beat(now+(i*self.bpb+j)*spb, not j, False)
+        self._process_beats()
 
     def _exit_pick_beats(self) -> None:
         self.player.close()
