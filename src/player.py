@@ -17,7 +17,7 @@ class Player:
 
     def __init__(self) -> None:
         pygame.mixer.init()
-        pygame.mixer.music.set_endevent(pygame.USEREVENT)
+        pygame.mixer.music.set_endevent(USEREVENT)
 
     def open(self, file: str) -> None:
         """
@@ -64,7 +64,7 @@ class Player:
 
             # 还原音量与结束事件
             pygame.mixer.music.set_volume(vol_bak)
-            pygame.mixer.music.set_endevent(pygame.USEREVENT)
+            pygame.mixer.music.set_endevent(USEREVENT)
             pygame.mixer.music.play()
             pygame.mixer.music.pause()
             self.playing = False

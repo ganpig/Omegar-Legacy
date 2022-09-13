@@ -4,18 +4,16 @@ import math
 import os
 import pickle
 import statistics
+import sys
 import time
 
 import easygui
-import pygame_sdl2
+import pygame
 
 from common import *
 from exporter import *
 from player import Player
 from ui import *
-
-pygame_sdl2.import_as_pygame()
-import pygame  # NOQA: E402
 
 
 class App:
@@ -63,9 +61,17 @@ class App:
                 self.draw()
                 self.process_events()
                 self.error_cnt = 0
+            except SystemExit:
+                sys.exit()
             except:
                 easygui.exceptionbox(
                     '啊这……怎么又出错了' if self.error_cnt else '不好意思，程序出了点小差错……', WINDOW_TITLE)
+                self.error_cnt += 1
+                if self.error_cnt >= 3:
+                    if easygui.ynbox('事不过三，是否退出程序？', WINDOW_TITLE, ('退出', '再试试')):
+                        self.window.exit()
+                    else:
+                        self.error_cnt = 0
 
     def open(self, page) -> None:
         """
@@ -116,21 +122,21 @@ class App:
         处理事件。
         """
         for event in self.window.process_events():
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == MOUSEBUTTONDOWN:
                 for button in self.buttons.values():
                     button.process_click_event(event.pos, event.button)
                 for slider in self.sliders.values():
                     slider.process_click_event(event.pos)
-            elif event.type == pygame.MOUSEBUTTONUP:
+            elif event.type == MOUSEBUTTONUP:
                 for slider in self.sliders.values():
                     slider.process_release_event(event.pos)
-            elif event.type == pygame.KEYDOWN:
+            elif event.type == KEYDOWN:
                 pressed = pygame.key.get_pressed()
-                ctrl_alt = CTRL*(pressed[pygame.K_LCTRL] or pressed[pygame.K_RCTRL]) +\
-                    ALT*(pressed[pygame.K_LALT] or pressed[pygame.K_RALT])
+                ctrl_alt = CTRL*(pressed[K_LCTRL] or pressed[K_RCTRL]) +\
+                    ALT*(pressed[K_LALT] or pressed[K_RALT])
                 if event.key in self.shortcuts[ctrl_alt]:
                     self.shortcuts[ctrl_alt][event.key]()
-            elif event.type == pygame.USEREVENT:
+            elif event.type == USEREVENT:
                 if self.player.opening:
                     self.player.replay()
         self.buttons.update(self.later_buttons)
@@ -401,10 +407,10 @@ class App:
     def _open_home(self) -> None:
         self.window.set_subtitle()
 
-        self.shortcuts[CTRL][pygame.K_n] = self.create_project
-        self.shortcuts[CTRL][pygame.K_o] = self.open_project
-        self.shortcuts[CTRL][pygame.K_h] = self.view_recent_projects
-        self.shortcuts[CTRL][pygame.K_e] = self.export_project
+        self.shortcuts[CTRL][K_n] = self.create_project
+        self.shortcuts[CTRL][K_o] = self.open_project
+        self.shortcuts[CTRL][K_h] = self.view_recent_projects
+        self.shortcuts[CTRL][K_e] = self.export_project
 
     def _draw_home(self, start) -> None:
         self.show_button('settings', ICONS['settings'], (WINDOW_SIZE[0]-10, WINDOW_SIZE[1]-10),
@@ -448,17 +454,17 @@ class App:
             for i, time in enumerate(bar):
                 self._add_beat(time, not i, False)
 
-        self.shortcuts[0][pygame.K_ESCAPE] = self.exit
-        self.shortcuts[0][pygame.K_SPACE] = self._play_or_pause
-        self.shortcuts[0][pygame.K_LEFT] = lambda: self.player.set_pos(
+        self.shortcuts[0][K_ESCAPE] = self.exit
+        self.shortcuts[0][K_SPACE] = self._play_or_pause
+        self.shortcuts[0][K_LEFT] = lambda: self.player.set_pos(
             self.player.get_pos()-1)
-        self.shortcuts[0][pygame.K_RIGHT] = lambda: self.player.set_pos(
+        self.shortcuts[0][K_RIGHT] = lambda: self.player.set_pos(
             self.player.get_pos()+1)
-        self.shortcuts[0][pygame.K_DOWN] = lambda: self._add_beat(
+        self.shortcuts[0][K_DOWN] = lambda: self._add_beat(
             self.player.get_pos(), False)
-        self.shortcuts[0][pygame.K_UP] = lambda: self._add_beat(
+        self.shortcuts[0][K_UP] = lambda: self._add_beat(
             self.player.get_pos(), True)
-        self.shortcuts[CTRL][pygame.K_s] = self.save_project
+        self.shortcuts[CTRL][K_s] = self.save_project
 
     def _draw_pick_beats(self, start) -> None:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',
@@ -655,7 +661,7 @@ class App:
 
     def _open_edit(self) -> None:
         self.window.set_subtitle(self.project_path)
-        self.shortcuts[0][pygame.K_ESCAPE] = self.exit
+        self.shortcuts[0][K_ESCAPE] = self.exit
 
     def _draw_edit(self, start) -> None:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',
@@ -681,7 +687,7 @@ class App:
     """
 
     def _open_settings(self) -> None:
-        self.shortcuts[0][pygame.K_ESCAPE] = self.exit
+        self.shortcuts[0][K_ESCAPE] = self.exit
 
     def _draw_settings(self, start) -> None:
         self.show_button('return', ICONS['return'], (SPLIT_LINE+10, 10), 'topleft',

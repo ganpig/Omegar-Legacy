@@ -130,7 +130,7 @@ class Window:
                 except:
                     self.mask_alpha = 200
                     self.set_and_save('window', 'mask_alpha', '200')
-                mask = pygame.Surface(WINDOW_SIZE, pygame.SRCALPHA)
+                mask = pygame.Surface(WINDOW_SIZE, SRCALPHA)
                 mask.fill((0, 0, 0, self.mask_alpha))
                 self.bg_image_with_mask.blit(mask, (0, 0))
             except:
@@ -204,7 +204,7 @@ class Window:
         self.mask_alpha = int(value * 255)
         self.set_and_save('window', 'mask_alpha', str(self.mask_alpha))
         self.bg_image_with_mask = self.bg_image.copy()
-        mask = pygame.Surface(WINDOW_SIZE, pygame.SRCALPHA)
+        mask = pygame.Surface(WINDOW_SIZE, SRCALPHA)
         mask.fill((0, 0, 0, self.mask_alpha))
         self.bg_image_with_mask.blit(mask, (0, 0))
 
@@ -283,12 +283,12 @@ class Window:
         ret = []
         events = pygame.event.get()
         for event in events:
-            if event.type == pygame.MOUSEMOTION:
+            if event.type == MOUSEMOTION:
                 self.mouse_pos = event.pos
                 ret.append(event)
-            elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.KEYDOWN, pygame.USEREVENT):
+            elif event.type in (MOUSEBUTTONDOWN, MOUSEBUTTONUP, KEYDOWN, USEREVENT):
                 ret.append(event)
-            elif event.type == pygame.QUIT:
+            elif event.type == QUIT:
                 if easygui.ynbox('真的要退出程序吗？', '不要离开我啊 QwQ', ('退出', '手滑了')):
                     self.exit()
         return ret
@@ -349,7 +349,7 @@ class Button:
                      > 0 else max(0, -time.time()-self.touch_time))*510)
         if self.background:
             alpha_surface = pygame.Surface(
-                self.icon.get_size(), pygame.SRCALPHA)
+                self.icon.get_size(), SRCALPHA)
             if self.background == 'circle':
                 pygame.draw.circle(alpha_surface, (*self.window.main_color, alpha),
                                    (self.size[0]//2, self.size[1]//2), self.size[0]//2)
@@ -386,9 +386,9 @@ class Button:
         处理点击事件。
         """
         if self.rect.collidepoint(*mouse_pos):
-            if button == pygame.BUTTON_LEFT:
+            if button == BUTTON_LEFT:
                 self.todo()
-            elif button == pygame.BUTTON_RIGHT and self.todo_right:
+            elif button == BUTTON_RIGHT and self.todo_right:
                 self.todo_right()
 
 
@@ -411,7 +411,7 @@ class Slider:
         self.text_align = text_align
         self.button_align = button_align
         self.icon_rect = ICONS['crystal'].get_rect()
-        self.bar = pygame.Surface((length, width), pygame.SRCALPHA)
+        self.bar = pygame.Surface((length, width), SRCALPHA)
         self.bar_rect = self.bar.get_rect()
         self.redraw_bar()
         exec(f'self.bar_rect.{self.align}=pos')
@@ -444,7 +444,7 @@ class Slider:
         alpha = int((min(0.5, time.time()-self.touch_time) if self.touch_time
                     > 0 else max(0, -time.time()-self.touch_time))*510)
         alpha_surface = pygame.Surface(
-            (SLIDER_BUTTON_SIZE, SLIDER_BUTTON_SIZE), pygame.SRCALPHA)
+            (SLIDER_BUTTON_SIZE, SLIDER_BUTTON_SIZE), SRCALPHA)
         pygame.draw.circle(alpha_surface, (*self.window.main_color,
                            alpha), (SLIDER_BUTTON_SIZE//2, SLIDER_BUTTON_SIZE//2), SLIDER_BUTTON_SIZE//2)
         self.icon_rect.midbottom = (
