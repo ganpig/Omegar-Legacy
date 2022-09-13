@@ -7,12 +7,15 @@ import statistics
 import time
 
 import easygui
-import pygame
+import pygame_sdl2
 
 from common import *
 from exporter import *
 from player import Player
 from ui import *
+
+pygame_sdl2.import_as_pygame()
+import pygame  # NOQA: E402
 
 
 class App:
@@ -21,6 +24,7 @@ class App:
     bpm: int = 120  # 每分钟拍子数
     buttons: dict = {}  # 按钮
     earliest_beat: float = 0
+    error_cnt: int = 0  # 连续错误计数器
     later_buttons: dict = {}  # 延迟添加的按钮
     later_del_buttons: list = []  # 延迟删除的按钮
     latest_beat: float = 0
@@ -55,8 +59,13 @@ class App:
         程序主体循环。
         """
         while True:
-            self.draw()
-            self.process_events()
+            try:
+                self.draw()
+                self.process_events()
+                self.error_cnt = 0
+            except:
+                easygui.exceptionbox(
+                    '啊这……怎么又出错了' if self.error_cnt else '不好意思，程序出了点小差错……', WINDOW_TITLE)
 
     def open(self, page) -> None:
         """
@@ -294,7 +303,7 @@ class App:
                 pickle_path = easygui.fileopenbox(
                     '请选择生成设置文件', '导出项目', '*.pkl', ['*.pkl'])
                 if pickle_path:
-                    name, composer, illustrator, music_path, illustration_path, charts_info = pickle.load(
+                    title, composer, illustrator, music_path, illustration_path, charts_info = pickle.load(
                         open(pickle_path, 'rb'))  # 从 pickle 文件读取生成设置
                 else:
                     return
@@ -309,7 +318,7 @@ class App:
                     if not all(data):
                         easygui.msgbox('请将歌曲信息填写完整！', '导出项目', '哦~')
                     else:
-                        name, composer, illustrator = data
+                        title, composer, illustrator = data
                         break
 
                 music_path = easygui.fileopenbox(
@@ -356,11 +365,11 @@ class App:
                 return
 
             convert_charts(charts_info)
-            info_path = make_info(name, composer, illustrator, charts_info)
+            info_path = make_info(title, composer, illustrator, charts_info)
 
             if easygui.ynbox('请选择导出方式', '导出项目', ('打包为 OMGZ 文件', '导出到文件夹')):
                 ok = omgz_path = easygui.filesavebox(
-                    '保存 omgz 文件', '导出项目', name+'.omgz',  ['*.omgz'])
+                    '保存 omgz 文件', '导出项目', title+'.omgz',  ['*.omgz'])
                 if ok:
                     build_omgz(info_path, music_path,
                                illustration_path, charts_info, omgz_path)
@@ -371,7 +380,7 @@ class App:
                     build_folder(info_path, music_path, illustration_path,
                                  charts_info, folder_path)
         except:
-            easygui.exceptionbox('导出失败了……www', '导出项目')
+            easygui.exceptionbox('导出项目失败！', WINDOW_SIZE)
             return
 
         easygui.msgbox('谱面导出成功！', '导出项目', '好耶')
@@ -379,9 +388,9 @@ class App:
         if not using_pickle:
             if easygui.ynbox('是否保存生成设置以便以后导出同一项目使用？', '文件已导出' if ok else '文件未导出', ('保存', '不保存')):
                 pickle_path = easygui.filesavebox(
-                    '保存生成设置', '导出项目', name+'.pkl', ['*.pkl'])  # 将生成设置保存到 pickle 文件
+                    '保存生成设置', '导出项目', title+'.pkl', ['*.pkl'])  # 将生成设置保存到 pickle 文件
                 if pickle_path:
-                    pickle.dump((name, composer, illustrator, music_path,
+                    pickle.dump((title, composer, illustrator, music_path,
                                 illustration_path, charts_info), open(pickle_path, 'wb'))
                     easygui.msgbox('生成设置保存成功!', '导出项目', '好耶')
 

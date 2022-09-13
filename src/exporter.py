@@ -191,14 +191,14 @@ def convert_charts(charts_info: list) -> None:
                                         .read()).hexdigest()  # 计算 omgc 文件 MD5
 
 
-def make_info(name: str, composer: str, illustrator: str, charts_info: list) -> str:
+def make_info(title: str, composer: str, illustrator: str, charts_info: list) -> str:
     """
     生成 info.omgs 文件。
     参数：前三个为歌曲信息，第四个为 convert_charts() 处理后的谱面信息。
     返回值：生成的 info 文件 path。
     """
     with open(tempfile.mkstemp()[1], 'w', encoding='utf-8') as f:
-        print(name, composer, illustrator, len(
+        print(title, composer, illustrator, len(
             charts_info), sep='\n', file=f)  # 写入歌曲信息
         for chart_info in charts_info:
             print(chart_info['difficulty'], chart_info['diff_number'],
