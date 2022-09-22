@@ -1,8 +1,12 @@
+# 该项目暂停开发，请以 [OmegaRhythmLab/Omegar-Toolbox](https://github.com/OmegaRhythmLab/Omegar-Toolbox) 的文档为准
+
+---
+
 # OMEGAR: Omega 制谱器
 
 这里是全新音游 Omega 的官方制谱器仓库
 
-开发者请参阅 [文件格式文档](doc/File-Format.md) 和 [第三方库列表](doc/3rd-Party-Libraries.md)
+开发者请参阅 ~[文件格式文档](doc/File-Format.md)~ 和 [第三方库列表](doc/3rd-Party-Libraries.md)
 
 谱师请参阅 [用户手册](doc/User-Guide.md)
 
